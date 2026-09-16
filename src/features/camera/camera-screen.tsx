@@ -126,32 +126,6 @@ export function CameraScreen() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const { isFullscreen, isSupported: isFullscreenSupported, toggleFullscreen } =
     useFullscreen(rootRef);
-  // Tinggi footer kontrol kamera diukur secara live (bukan angka statis) agar
-  // HUD watermark di atasnya selalu punya jarak aman terlepas dari apakah
-  // baris preset zoom sedang tampil atau safe-area-inset-bottom device
-  // berbeda-beda — mencegah HUD ketutupan tombol shutter/kontrol (audit finding).
-  const footerRef = useRef<HTMLElement | null>(null);
-  const [footerHeight, setFooterHeight] = useState<number>(0);
-
-  useEffect(() => {
-    const node = footerRef.current;
-    if (!node || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setFooterHeight(entry.contentRect.height);
-      }
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [cameraStatus]);
-
-  const [isFlashing, setIsFlashing] = useState<boolean>(false);
-  const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
-  const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
-  const [liveClock, setLiveClock] = useState<string>("");
-
   // Deteksi orientasi layar (landscape vs portrait) untuk penyesuaian tata letak bebas tumpang tindih
   const [isLandscape, setIsLandscape] = useState<boolean>(false);
   useEffect(() => {
@@ -167,6 +141,47 @@ export function CameraScreen() {
       window.removeEventListener("orientationchange", updateOrientation);
     };
   }, []);
+
+  // Tinggi footer kontrol kamera diukur secara live (bukan angka statis) agar
+  // HUD watermark di atasnya selalu punya jarak aman terlepas dari apakah
+  // safe-area-inset-bottom device berbeda-beda — mencegah HUD ketutupan tombol shutter/kontrol.
+  // Default 114px memastikan clearance shutter (shutter 80px + padding bawah 24px + margin)
+  // tetap aman saat awal render maupun saat kembali dari orientasi landscape.
+  const footerRef = useRef<HTMLElement | null>(null);
+  const [footerHeight, setFooterHeight] = useState<number>(114);
+
+  useEffect(() => {
+    if (isLandscape) return;
+    const node = footerRef.current;
+    if (!node) return;
+
+    // Ukur tinggi aktual footer langsung saat mount / kembali dari mode landscape
+    const rect = node.getBoundingClientRect();
+    if (rect.height > 0) {
+      setFooterHeight(rect.height);
+    }
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height =
+          entry.borderBoxSize?.[0]?.blockSize ??
+          entry.target.getBoundingClientRect().height;
+        if (height > 0) {
+          setFooterHeight(height);
+        }
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [cameraStatus, isLandscape]);
+
+  const [isFlashing, setIsFlashing] = useState<boolean>(false);
+  const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
+  const [liveClock, setLiveClock] = useState<string>("");
 
   // Posisi HUD live watermark: "bottom" (default bawah-kiri) atau "top" (atas-kiri)
   const [hudPosition, setHudPosition] = useState<"bottom" | "top">(() => {
@@ -435,7 +450,7 @@ export function CameraScreen() {
                     ? "auto"
                     : isLandscape
                     ? "1.25rem"
-                    : Math.max(footerHeight + 10, 84),
+                    : Math.max(footerHeight + 10, 114),
                 top:
                   hudPosition === "top"
                     ? "max(4.5rem, env(safe-area-inset-top) + 3.5rem)"
@@ -464,7 +479,7 @@ export function CameraScreen() {
                     ? "auto"
                     : isLandscape
                     ? "1.25rem"
-                    : Math.max(footerHeight + 10, 84),
+                    : Math.max(footerHeight + 10, 114),
                 top:
                   hudPosition === "top"
                     ? "max(4.5rem, env(safe-area-inset-top) + 3.5rem)"
@@ -667,7 +682,7 @@ export function CameraScreen() {
           zoomPresets={zoomPresets}
           onZoomChange={setZoom}
           orientation="vertical"
-          className="absolute right-3.5 bottom-24 sm:bottom-28 z-25 pointer-events-auto"
+          className="absolute right-3 sm:right-3.5 top-1/2 -translate-y-1/2 z-25 pointer-events-auto"
         />
       )}
 

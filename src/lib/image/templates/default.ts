@@ -14,9 +14,9 @@ export function createDefaultTemplate(
     // Nilai opacity/fontSize/spacing/mapThumbnailSizePx/mapZoom diselaraskan
     // dengan hasil tuning GeoPatriot mobile (referensi: referensi/GeoPatriot-main/
     // lib/watermark/models/watermark_configuration.dart) yang sudah diuji di device nyata.
-    opacity: 0.4,
-    fontSizePx: 14,
-    mapThumbnailSizePx: 160,
+    opacity: 0.5,
+    fontSizePx: 16,
+    mapThumbnailSizePx: 140,
     mapZoom: 16,
     marginPx: 16,
     radiusPx: 12,
