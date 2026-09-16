@@ -27,6 +27,8 @@ import {
   SettingsIcon,
   MaximizeIcon,
   MinimizeIcon,
+  ArrowUpDownIcon,
+  CrosshairIcon,
 } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 
@@ -149,6 +151,32 @@ export function CameraScreen() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
   const [liveClock, setLiveClock] = useState<string>("");
+
+  // Deteksi orientasi layar (landscape vs portrait) untuk penyesuaian tata letak bebas tumpang tindih
+  const [isLandscape, setIsLandscape] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateOrientation = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    updateOrientation();
+    window.addEventListener("resize", updateOrientation);
+    window.addEventListener("orientationchange", updateOrientation);
+    return () => {
+      window.removeEventListener("resize", updateOrientation);
+      window.removeEventListener("orientationchange", updateOrientation);
+    };
+  }, []);
+
+  // Posisi HUD live watermark: "bottom" (default bawah-kiri) atau "top" (atas-kiri)
+  const [hudPosition, setHudPosition] = useState<"bottom" | "top">(() => {
+    return watermarkSettings.position === "top" || watermarkSettings.position === "topLeft"
+      ? "top"
+      : "bottom";
+  });
+
+  // State minimize HUD untuk framing viewfinder tanpa halangan
+  const [isHudMinimized, setIsHudMinimized] = useState<boolean>(false);
 
   // Evaluasi diagnostik kesehatan subsistem (Phase 14 / workflow #16)
   const diagnostics = useSystemDiagnostics({
@@ -393,49 +421,188 @@ export function CameraScreen() {
           zoomCapabilities={zoomCapabilities}
           onZoomChange={setZoom}
         >
-          {/* Watermark Live HUD Overlay (Interaktif, ringkas 2 baris) — posisi
-              bottom dihitung dari tinggi footer terukur (footerHeight) + jarak
-              aman, bukan angka statis, supaya tidak pernah ketutupan tombol
-              shutter/kontrol kamera walau footer berubah tinggi (baris preset
-              zoom tampil/tidak, safe-area-inset-bottom berbeda antar device). */}
-          <div
-            className="absolute inset-x-3 pointer-events-auto transition-[bottom] duration-150"
-            style={{ bottom: footerHeight + 12 }}
-          >
+          {/* Watermark Live HUD Overlay: Compact Content-Based Card sesuai referensi
+              GeoPatriot Mobile (Map di kiri, teks di kanan, badge GeoPatriot di atas-kanan).
+              Di-anchor di kiri-bawah (left-3) dengan clearance dinamis (footerHeight) di portrait,
+              dan max-w-[48vw] di landscape sehingga BEBAS 100% dari tumpang tindih tombol shutter.
+              Dilengkapi tombol flip posisi (atas/bawah) dan tombol minimize untuk framing leluasa. */}
+          {isHudMinimized ? (
             <div
-              onClick={() => setIsMetadataSheetOpen(true)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setIsMetadataSheetOpen(true);
-                }
+              className="absolute left-3 pointer-events-auto transition-all duration-200 z-20"
+              style={{
+                bottom:
+                  hudPosition === "top"
+                    ? "auto"
+                    : isLandscape
+                    ? "1rem"
+                    : Math.max(footerHeight + 14, 120),
+                top:
+                  hudPosition === "top"
+                    ? "max(4.5rem, env(safe-area-inset-top) + 3.5rem)"
+                    : "auto",
               }}
-              role="button"
-              tabIndex={0}
-              aria-label="Buka pengaturan metadata watermark"
-              className="px-3 py-2 rounded-xl bg-[#08111d]/85 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/40 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-sans font-semibold text-white truncate">
-                  {activeLocationName}
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-[#dcab55] font-semibold shrink-0 group-hover:underline">
-                  <SlidersIcon size={11} />
-                  <span>Ubah</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2 mt-0.5 font-mono text-[10px] text-[#7ec7e8]">
-                <span className="flex items-center gap-1 truncate">
-                  <MapPinIcon size={11} className="text-[#c5984f] shrink-0" />
-                  {activeLatitude.toFixed(5)}, {activeLongitude.toFixed(5)}
-                </span>
-                <span className="flex items-center gap-1 text-zinc-400 shrink-0">
-                  <ClockIcon size={11} className="text-[#dcab55]" />
-                  {activeTimeDisplay}
-                </span>
+              <button
+                type="button"
+                onClick={() => setIsHudMinimized(false)}
+                aria-label="Tampilkan panel watermark"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#08111d]/90 hover:bg-[#0e2035] backdrop-blur-md border border-[#c5984f]/60 text-white shadow-xl active:scale-95 transition-all text-xs font-semibold"
+              >
+                <MapPinIcon size={12} className="text-[#c5984f]" />
+                <span className="truncate max-w-[180px]">{activeLocationName}</span>
+                <MaximizeIcon size={11} className="text-zinc-400 ml-0.5" />
+              </button>
+            </div>
+          ) : (
+            <div
+              className="absolute left-3 pointer-events-auto transition-[bottom,top,transform] duration-200 z-20 flex flex-col items-end"
+              style={{
+                bottom:
+                  hudPosition === "top"
+                    ? "auto"
+                    : isLandscape
+                    ? "1rem"
+                    : Math.max(footerHeight + 14, 120),
+                top:
+                  hudPosition === "top"
+                    ? "max(4.5rem, env(safe-area-inset-top) + 3.5rem)"
+                    : "auto",
+                maxWidth: isLandscape
+                  ? "min(48vw, 360px)"
+                  : "min(calc(100vw - 1.5rem), 340px)",
+              }}
+            >
+              {/* Lencana Brand GeoPatriot menempel di pojok kanan-atas card (selaras mobile reference) */}
+              {watermarkSettings.visibleFields.branding && (
+                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-t-xl bg-[#08111d]/95 border-t border-x border-[#2f6d8b]/50 shadow-lg text-[10px] text-white -mb-0.5 mr-2 relative z-10">
+                  <div className="w-3.5 h-3.5 rounded-full overflow-hidden shrink-0 flex items-center justify-center">
+                    <Image src="/app-icon.png" alt="GeoPatriot" width={14} height={14} />
+                  </div>
+                  <span className="font-bold text-[#dcab55]">GeoPatriot</span>
+                  <div className="h-3 w-px bg-white/20 mx-0.5" />
+                  {/* Tombol flip cepat posisi atas / bawah */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHudPosition((prev) => (prev === "bottom" ? "top" : "bottom"));
+                    }}
+                    aria-label={hudPosition === "bottom" ? "Pindahkan ke atas" : "Pindahkan ke bawah"}
+                    title={hudPosition === "bottom" ? "Pindahkan ke atas" : "Pindahkan ke bawah"}
+                    className="p-0.5 hover:text-[#dcab55] text-zinc-400 hover:bg-white/10 rounded transition-colors"
+                  >
+                    <ArrowUpDownIcon size={11} />
+                  </button>
+                  {/* Tombol ciutkan / minimize HUD */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsHudMinimized(true);
+                    }}
+                    aria-label="Ciutkan watermark HUD"
+                    title="Ciutkan watermark HUD"
+                    className="p-0.5 hover:text-[#dcab55] text-zinc-400 hover:bg-white/10 rounded transition-colors"
+                  >
+                    <MinimizeIcon size={11} />
+                  </button>
+                </div>
+              )}
+
+              {/* Card Watermark Utama (Compact Content-Based, Map di Kiri, Metadata di Kanan) */}
+              <div
+                onClick={() => setIsMetadataSheetOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setIsMetadataSheetOpen(true);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="Buka pengaturan metadata watermark"
+                className="w-full p-2.5 rounded-2xl bg-[#08111d]/90 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/50 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
+              >
+                <div className="flex items-center gap-2.5">
+                  {/* Sisi Kiri: Map Thumbnail (selaras GeoPatriot Mobile) */}
+                  {watermarkSettings.visibleFields.mapThumbnail && (
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#0e2035] border border-[#2f6d8b]/40 shrink-0 flex items-center justify-center shadow-inner">
+                      {mapThumbnailUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={mapThumbnailUrl}
+                          alt="Map thumbnail"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-center p-1">
+                          <CrosshairIcon size={18} className="text-[#c5984f] animate-pulse" />
+                          <span className="text-[8px] font-mono text-[#7ec7e8] mt-0.5">GPS</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Sisi Kanan: Tumpukan Teks Metadata */}
+                  <div className="flex-1 min-w-0 text-left space-y-0.5">
+                    {/* Baris 1: Judul / Nama Lokasi */}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-sans font-bold text-white truncate">
+                        {activeLocationName}
+                      </span>
+                      <span className="text-[9px] text-[#dcab55] font-semibold shrink-0 group-hover:underline flex items-center gap-0.5">
+                        <SlidersIcon size={10} />
+                        <span>Ubah</span>
+                      </span>
+                    </div>
+
+                    {/* Baris 2: Alamat Lengkap (opsional/terpotong) */}
+                    {watermarkSettings.visibleFields.address && geoAddress?.address && (
+                      <p className="text-[10px] text-zinc-300 truncate">
+                        {geoAddress.address}
+                      </p>
+                    )}
+
+                    {/* Baris 3: Koordinat */}
+                    {watermarkSettings.visibleFields.coordinate && (
+                      <div className="flex items-center gap-1 font-mono text-[9px] text-[#7ec7e8] truncate">
+                        <MapPinIcon size={10} className="text-[#c5984f] shrink-0" />
+                        <span>
+                          {activeLatitude.toFixed(5)}, {activeLongitude.toFixed(5)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Baris 4: Tanggal & Jam */}
+                    {(watermarkSettings.visibleFields.date || watermarkSettings.visibleFields.time) && (
+                      <div className="flex items-center gap-1 text-[9px] text-zinc-400 truncate">
+                        <ClockIcon size={10} className="text-[#dcab55] shrink-0" />
+                        <span>{activeTimeDisplay}</span>
+                      </div>
+                    )}
+
+                    {/* Baris 5: Akurasi GPS */}
+                    {watermarkSettings.visibleFields.accuracy && geoCoord?.accuracy !== undefined && (
+                      <div className="text-[8px] text-[#94a3b8] truncate">
+                        Akurasi ±{Math.round(geoCoord.accuracy)} m
+                        {geoQuality
+                          ? ` (${
+                              geoQuality === "excellent"
+                                ? "Sangat Baik"
+                                : geoQuality === "good"
+                                ? "Baik"
+                                : geoQuality === "fair"
+                                ? "Cukup"
+                                : "Buruk"
+                            })`
+                          : ""}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </CameraViewport>
       </main>
 

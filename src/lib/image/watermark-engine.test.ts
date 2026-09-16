@@ -242,4 +242,120 @@ describe("renderWatermark", () => {
       expect.any(Number),
     );
   });
+
+  it("merender panel ringkas (tidak melebar penuh ke layar) untuk teks pendek", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const shortData: WatermarkData = {
+      snapshot: {
+        coordinate: { latitude: -6.2, longitude: 106.8 },
+        locationName: "Pos A",
+        capturedAt: "2026-09-16T01:31:12.000Z",
+        timezone: "WIB",
+        metadataSource: { location: "manual", time: "manual" },
+      },
+    };
+    const settings = createDefaultTemplate({
+      visibleFields: {
+        locationName: true,
+        address: false,
+        coordinate: true,
+        date: true,
+        time: false,
+        timezone: false,
+        accuracy: false,
+        altitude: false,
+        mapThumbnail: false,
+        customText: false,
+        branding: false,
+      },
+    });
+
+    await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: shortData,
+      settings,
+      canvasFactory: () => canvas,
+    });
+
+    // Cek lebar panel yang digambar pada fillRect
+    const fillRectCalls = (ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls;
+    expect(fillRectCalls.length).toBeGreaterThan(0);
+    const [, , drawnPanelWidth] = fillRectCalls[0] as [number, number, number, number];
+    // Lebar panel harus jauh lebih kecil dari lebar foto penuh (1080 - margin*2 = 1048)
+    expect(drawnPanelWidth).toBeLessThan(600);
+  });
+
+  it("menggambar map thumbnail di sebelah kiri baris teks metadata", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const mockMapImage = { kind: "static-map" };
+    const dataWithMap: WatermarkData = {
+      snapshot: SAMPLE_DATA.snapshot,
+      providerAttribution: "© LocationIQ",
+    };
+    const settings = createDefaultTemplate({
+      visibleFields: { ...createDefaultTemplate().visibleFields, mapThumbnail: true },
+    });
+
+    await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: dataWithMap,
+      settings,
+      canvasFactory: () => canvas,
+      mapThumbnailImage: mockMapImage,
+    });
+
+    // Dapatkan posisi X dari map thumbnail
+    const mapDrawCall = (ctx.drawImage as ReturnType<typeof vi.fn>).mock.calls.find(
+      (call) => call[0] === mockMapImage,
+    );
+    expect(mapDrawCall).toBeDefined();
+    const mapX = mapDrawCall![1] as number;
+
+    // Dapatkan posisi X dari teks metadata
+    const textDrawCalls = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls;
+    expect(textDrawCalls.length).toBeGreaterThan(0);
+    const firstTextX = textDrawCalls[0][1] as number;
+
+    // Map thumbnail harus berada di sisi kiri teks (mapX < textX)
+    expect(mapX).toBeLessThan(firstTextX);
+  });
+
+  it("mendukung posisi bottomLeft dan topLeft", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const settingsBottomLeft = createDefaultTemplate({ position: "bottomLeft" });
+    const settingsTopLeft = createDefaultTemplate({ position: "topLeft" });
+
+    await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: settingsBottomLeft,
+      canvasFactory: () => canvas,
+    });
+
+    const callsBottom = (ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls;
+    const [blX, blY] = callsBottom[0] as [number, number, number, number];
+    expect(blX).toBe(16); // margin
+    expect(blY).toBeGreaterThan(1000); // bottom
+
+    const { canvas: canvasTop, ctx: ctxTop } = createFakeCanvas();
+    await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: settingsTopLeft,
+      canvasFactory: () => canvasTop,
+    });
+
+    const callsTop = (ctxTop.fillRect as ReturnType<typeof vi.fn>).mock.calls;
+    const [tlX, tlY] = callsTop[0] as [number, number, number, number];
+    expect(tlX).toBe(16); // margin
+    expect(tlY).toBe(16); // top
+  });
 });

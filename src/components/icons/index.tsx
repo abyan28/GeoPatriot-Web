@@ -604,3 +604,27 @@ export function MinimizeIcon({ size = 24, className = "", ...props }: IconProps)
   );
 }
 
+/**
+ * Ikon Tukar Posisi Atas/Bawah (ArrowUpDown).
+ */
+export function ArrowUpDownIcon({ size = 24, className = "", ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+      {...props}
+    >
+      <path d="m7 15 5 5 5-5" />
+      <path d="m7 9 5-5 5 5" />
+    </svg>
+  );
+}
+

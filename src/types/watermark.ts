@@ -9,7 +9,13 @@ import type { MetadataSnapshot } from "./metadata";
 export type WatermarkTemplate = "default" | "ringkas" | "detail";
 
 /** Posisi panel watermark pada foto. */
-export type WatermarkPosition = "top" | "bottom";
+export type WatermarkPosition =
+  | "bottom"
+  | "top"
+  | "bottomLeft"
+  | "topLeft"
+  | "bottomRight"
+  | "topRight";
 
 /** Perataan teks di dalam panel watermark. */
 export type WatermarkAlignment = "left" | "center" | "right";
