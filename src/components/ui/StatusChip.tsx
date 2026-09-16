@@ -53,6 +53,12 @@ export function StatusChip({
   );
 }
 
+export interface GpsQualityChipProps extends React.HTMLAttributes<HTMLDivElement> {
+  quality?: GpsQuality;
+  accuracy?: number;
+  isManual?: boolean;
+}
+
 /**
  * Pemetaan kualitas GPS ke label teks Bahasa Indonesia dan warna status.
  */
@@ -61,12 +67,8 @@ export function GpsQualityChip({
   accuracy,
   isManual = false,
   className = "",
-}: {
-  quality?: GpsQuality;
-  accuracy?: number;
-  isManual?: boolean;
-  className?: string;
-}) {
+  ...props
+}: GpsQualityChipProps) {
   if (isManual) {
     return (
       <StatusChip
@@ -75,6 +77,7 @@ export function GpsQualityChip({
         icon={<MapPinIcon size={14} />}
         tone="sky"
         className={className}
+        {...props}
       />
     );
   }
@@ -86,6 +89,7 @@ export function GpsQualityChip({
         icon={<MapPinIcon size={14} className="animate-pulse" />}
         tone="zinc"
         className={className}
+        {...props}
       />
     );
   }
@@ -101,6 +105,7 @@ export function GpsQualityChip({
           icon={<MapPinIcon size={14} />}
           tone="emerald"
           className={className}
+          {...props}
         />
       );
     case "good":
@@ -111,6 +116,7 @@ export function GpsQualityChip({
           icon={<MapPinIcon size={14} />}
           tone="sky"
           className={className}
+          {...props}
         />
       );
     case "fair":
@@ -121,6 +127,7 @@ export function GpsQualityChip({
           icon={<MapPinIcon size={14} />}
           tone="amber"
           className={className}
+          {...props}
         />
       );
     case "poor":
@@ -131,9 +138,15 @@ export function GpsQualityChip({
           icon={<MapPinIcon size={14} />}
           tone="rose"
           className={className}
+          {...props}
         />
       );
   }
+}
+
+export interface TimeModeChipProps extends React.HTMLAttributes<HTMLDivElement> {
+  isManual?: boolean;
+  timeString?: string;
 }
 
 /**
@@ -143,11 +156,8 @@ export function TimeModeChip({
   isManual = false,
   timeString,
   className = "",
-}: {
-  isManual?: boolean;
-  timeString?: string;
-  className?: string;
-}) {
+  ...props
+}: TimeModeChipProps) {
   return (
     <StatusChip
       label={isManual ? "Waktu Manual" : "Waktu Auto"}
@@ -155,6 +165,7 @@ export function TimeModeChip({
       icon={<ClockIcon size={14} />}
       tone={isManual ? "amber" : "zinc"}
       className={className}
+      {...props}
     />
   );
 }

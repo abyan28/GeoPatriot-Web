@@ -1,44 +1,120 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useCamera } from "./use-camera";
 import { CameraViewport } from "./camera-viewport";
 import { CameraControls } from "./camera-controls";
-import { GpsQualityChip } from "@/components/ui/StatusChip";
+import { useGeolocation } from "@/features/location";
+import { useMetadataConfig, MetadataEditorSheet, getLocalTimezone } from "@/features/metadata";
+import { StatusChip, GpsQualityChip } from "@/components/ui/StatusChip";
+import { EditIcon, MapPinIcon, ClockIcon, SlidersIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 
 /**
- * Komponen layar utama Kamera GeoPatriot Web.
- * Menyajikan live viewport, top status header, dan bottom controls.
+ * Komponen layar utama Kamera GeoPatriot Web (Integrasi Phase 1-4).
+ * Menyajikan live camera feed, live GPS tracking, live watermark HUD, dan bottom sheet editor metadata.
  */
 export function CameraScreen() {
-  const { status, facingMode, errorMessage, videoRef, start, toggleFacingMode } = useCamera();
+  const {
+    status: cameraStatus,
+    facingMode,
+    errorMessage: cameraError,
+    videoRef,
+    start,
+    toggleFacingMode,
+  } = useCamera();
+  const {
+    status: geoStatus,
+    coordinate: geoCoord,
+    quality: geoQuality,
+    addressInfo: geoAddress,
+    refresh: refreshGps,
+  } = useGeolocation({ autoStart: true, resolveAddress: true });
+
+  const {
+    locationMode,
+    timeMode,
+    manualLocation,
+    manualDateTime,
+    customNote,
+    setLocationMode,
+    setTimeMode,
+    setManualLocation,
+    setManualDateTime,
+    setCustomNote,
+    createSnapshot,
+    resetToDefaults,
+  } = useMetadataConfig();
+
   const { showToast } = useToast();
-  const [isFlashing, setIsFlashing] = useState(false);
-  const [sessionCount, setSessionCount] = useState(0);
+  const [isFlashing, setIsFlashing] = useState<boolean>(false);
+  const [sessionCount, setSessionCount] = useState<number>(0);
+  const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
+  const [liveClock, setLiveClock] = useState<string>("");
+
+  // Live timer untuk update jam di preview watermark HUD
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setLiveClock(
+        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(
+          now.getHours(),
+        )}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   /**
-   * Handler untuk simulasi aksi capture foto pada Phase 2 (sebelum pipeline lengkap di Phase 5).
+   * Handler tombol capture: membekukan MetadataSnapshot (Rules #5.1) dan memicu flash.
    */
   const handleCapture = () => {
-    if (status !== "ready") {
+    if (cameraStatus !== "ready") {
       showToast("Kamera belum aktif", "error");
       return;
     }
+
+    // Bekukan snapshot metadata secara immutable pada saat shutter ditekan
+    const snapshot = createSnapshot({
+      gpsCoordinate: geoCoord,
+      gpsQuality: geoQuality,
+      gpsAddressInfo: geoAddress,
+    });
 
     // Efek visual shutter flash
     setIsFlashing(true);
     setTimeout(() => setIsFlashing(false), 250);
 
     setSessionCount((prev) => prev + 1);
-    showToast("Foto berhasil diambil (Kamera PoC)", "success");
+
+    const locDesc =
+      snapshot.metadataSource.location === "manual"
+        ? `Manual (${snapshot.coordinate.latitude.toFixed(4)}, ${snapshot.coordinate.longitude.toFixed(4)})`
+        : `GPS (${snapshot.coordinate.latitude.toFixed(4)}, ${snapshot.coordinate.longitude.toFixed(4)})`;
+
+    showToast(`Foto diambil • ${locDesc}`, "success");
   };
+
+  // Koordinat & alamat aktif untuk ditampilkan pada Live HUD
+  const activeLatitude =
+    locationMode === "gps" && geoCoord ? geoCoord.latitude : manualLocation.latitude;
+  const activeLongitude =
+    locationMode === "gps" && geoCoord ? geoCoord.longitude : manualLocation.longitude;
+  const activeLocationName =
+    locationMode === "gps"
+      ? geoAddress?.locationName || (geoCoord ? "Koordinat GPS Lapangan" : "Mencari Lokasi...")
+      : manualLocation.locationName || "Lokasi Manual";
+  const activeAddress = locationMode === "gps" ? geoAddress?.address : manualLocation.address;
+  const activeTimeDisplay = timeMode === "auto" ? liveClock : manualDateTime.replace("T", " ");
 
   return (
     <div className="relative w-full h-[100dvh] max-w-md mx-auto bg-[#08111d] flex flex-col justify-between overflow-hidden shadow-2xl">
-      {/* Top Header Bar: Status & Branding GeoPatriot */}
-      <header className="absolute top-0 inset-x-0 z-30 pt-4 pb-3 px-4 bg-gradient-to-b from-[#08111d]/90 via-[#08111d]/50 to-transparent flex items-center justify-between pointer-events-none">
+      {/* Top Header Bar: Branding & GPS Status Chip (Clickable) */}
+      <header className="absolute top-0 inset-x-0 z-30 pt-4 pb-3 px-4 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-2.5">
           <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-lg border border-[#c5984f]/60 bg-[#08111d] flex items-center justify-center shrink-0">
             <Image
@@ -60,9 +136,59 @@ export function CameraScreen() {
           </div>
         </div>
 
-        {/* GPS Status Chip (Placeholder untuk Phase 3) */}
+        {/* GPS / Manual Status Chip: Menampilkan kualitas atau mode manual */}
         <div className="pointer-events-auto">
-          <GpsQualityChip quality="good" accuracy={8} />
+          {locationMode === "manual" ? (
+            <StatusChip
+              label="Mode Manual"
+              subLabel="Koordinat Tetap"
+              tone="amber"
+              icon={<EditIcon size={12} />}
+              onClick={() => setIsMetadataSheetOpen(true)}
+              role="button"
+              aria-label="Mode lokasi manual. Ketuk untuk ubah koordinat."
+              className="cursor-pointer active:scale-95 transition-transform"
+            />
+          ) : geoStatus === "ready" && geoCoord ? (
+            <GpsQualityChip
+              quality={geoQuality ?? "good"}
+              accuracy={geoCoord.accuracy}
+              onClick={() => setIsMetadataSheetOpen(true)}
+              role="button"
+              aria-label="Status kualitas GPS. Ketuk untuk pengaturan metadata."
+              className="cursor-pointer active:scale-95 transition-transform"
+            />
+          ) : geoStatus === "searching" ? (
+            <StatusChip
+              label="Mencari GPS..."
+              tone="sky"
+              active
+              onClick={() => setIsMetadataSheetOpen(true)}
+              role="button"
+              aria-label="Sedang mencari sinyal GPS. Ketuk untuk opsi manual."
+              className="cursor-pointer active:scale-95 transition-transform"
+            />
+          ) : geoStatus === "denied" ? (
+            <StatusChip
+              label="GPS Ditolak"
+              subLabel="Ketuk ganti Manual"
+              tone="rose"
+              onClick={() => setIsMetadataSheetOpen(true)}
+              role="button"
+              aria-label="Izin GPS ditolak. Ketuk untuk beralih ke input manual."
+              className="cursor-pointer active:scale-95 transition-transform"
+            />
+          ) : (
+            <StatusChip
+              label="GPS Offline"
+              subLabel="Gunakan Manual"
+              tone="zinc"
+              onClick={() => setIsMetadataSheetOpen(true)}
+              role="button"
+              aria-label="GPS tidak tersedia. Ketuk untuk input manual."
+              className="cursor-pointer active:scale-95 transition-transform"
+            />
+          )}
         </div>
       </header>
 
@@ -70,29 +196,78 @@ export function CameraScreen() {
       <main className="w-full h-full flex-1 flex flex-col">
         <CameraViewport
           videoRef={videoRef}
-          status={status}
+          status={cameraStatus}
           facingMode={facingMode}
-          errorMessage={errorMessage}
+          errorMessage={cameraError}
           isFlashing={isFlashing}
           onRequestCamera={() => start()}
         >
-          {/* Watermark Live HUD (Akan dihubungkan di Phase 6) */}
-          <div className="absolute bottom-4 inset-x-4 pointer-events-none">
-            <div className="p-3 rounded-xl bg-[#0e2035]/85 backdrop-blur-md border border-[#2f6d8b]/30 text-[11px] text-zinc-200 leading-relaxed max-w-xs shadow-xl">
-              <p className="font-semibold text-white flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#c5984f]" />
-                GeoPatriot Web
-              </p>
-              <p className="text-[#94a3b8] text-[10px] mt-0.5">
-                Watermark live preview akan aktif di tahap berikutnya.
-              </p>
+          {/* Watermark Live HUD Overlay (Interaktif & Real-time) */}
+          <div className="absolute bottom-4 inset-x-3 pointer-events-auto">
+            <div
+              onClick={() => setIsMetadataSheetOpen(true)}
+              role="button"
+              aria-label="Buka pengaturan metadata watermark"
+              className="p-3 rounded-2xl bg-[#08111d]/85 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/40 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99]"
+            >
+              <div className="flex items-center justify-between border-b border-[#1a3c61]/80 pb-2 mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#c5984f] shadow-[0_0_8px_rgba(197,152,79,0.8)]" />
+                  <span className="text-xs font-bold text-white tracking-wide">GeoPatriot Web</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0e2035] border border-[#2f6d8b]/30 text-[#7ec7e8] font-medium">
+                    {locationMode === "gps" ? "GPS Live" : "Manual"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 text-[10px] text-[#dcab55] font-semibold group-hover:underline">
+                  <SlidersIcon size={12} />
+                  <span>Ubah</span>
+                </div>
+              </div>
+
+              {/* Detail Lokasi & Koordinat */}
+              <div className="space-y-0.5 font-mono text-[11px] text-zinc-300">
+                <p className="font-sans font-semibold text-white text-xs line-clamp-1">
+                  {activeLocationName}
+                </p>
+                {activeAddress && (
+                  <p className="text-[10px] text-zinc-400 font-sans line-clamp-1">
+                    {activeAddress}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 text-[10px] text-[#7ec7e8] pt-0.5">
+                  <span className="flex items-center gap-1">
+                    <MapPinIcon size={12} className="text-[#c5984f]" />
+                    {activeLatitude.toFixed(6)}, {activeLongitude.toFixed(6)}
+                  </span>
+                  {locationMode === "gps" && geoCoord?.accuracy !== undefined && (
+                    <span className="text-zinc-400">±{Math.round(geoCoord.accuracy)}m</span>
+                  )}
+                </div>
+
+                {/* Waktu & Timezone */}
+                <div className="flex items-center gap-2 text-[10px] text-zinc-400 pt-0.5">
+                  <span className="flex items-center gap-1">
+                    <ClockIcon size={12} className="text-[#dcab55]" />
+                    {activeTimeDisplay}
+                  </span>
+                  <span className="text-[#2f6d8b] font-medium">{getLocalTimezone()}</span>
+                </div>
+
+                {/* Catatan Lapangan Opsional */}
+                {customNote.trim() && (
+                  <p className="text-[10px] text-[#eac47a] font-sans italic pt-1 line-clamp-1">
+                    &ldquo;{customNote.trim()}&rdquo;
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </CameraViewport>
       </main>
 
       {/* Bottom Controls (Thumb Zone) */}
-      {status === "ready" && (
+      {cameraStatus === "ready" && (
         <footer className="absolute bottom-0 inset-x-0 z-30 pointer-events-auto">
           <CameraControls
             onCapture={handleCapture}
@@ -102,6 +277,33 @@ export function CameraScreen() {
           />
         </footer>
       )}
+
+      {/* Drawer Editor Metadata & Lokasi (Phase 4) */}
+      <MetadataEditorSheet
+        isOpen={isMetadataSheetOpen}
+        onClose={() => setIsMetadataSheetOpen(false)}
+        locationMode={locationMode}
+        timeMode={timeMode}
+        manualLocation={manualLocation}
+        manualDateTime={manualDateTime}
+        customNote={customNote}
+        gpsCoordinate={geoCoord}
+        gpsQuality={geoQuality}
+        gpsAddressInfo={geoAddress}
+        onRefreshGps={refreshGps}
+        onSave={(config) => {
+          setLocationMode(config.locationMode);
+          setTimeMode(config.timeMode);
+          setManualLocation(config.manualLocation);
+          setManualDateTime(config.manualDateTime);
+          setCustomNote(config.customNote);
+          showToast("Pengaturan metadata disimpan", "success");
+        }}
+        onReset={() => {
+          resetToDefaults();
+          showToast("Pengaturan dikembalikan ke default", "info");
+        }}
+      />
     </div>
   );
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { classifyGpsQuality, getCurrentPosition, isGeolocationSupported } from "./geolocation";
+import {
+  classifyGpsQuality,
+  getCurrentPosition,
+  isGeolocationSupported,
+  watchPosition,
+} from "./geolocation";
 
 describe("classifyGpsQuality", () => {
   it("mengkategorikan accuracy sesuai ambang batas PRD #9", () => {
@@ -61,5 +66,69 @@ describe("getCurrentPosition", () => {
 
     const result = await getCurrentPosition();
     expect(result.status).toBe("denied");
+  });
+});
+
+describe("watchPosition", () => {
+  let clearWatchSpy: ReturnType<typeof vi.fn>;
+  let watchPositionSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    clearWatchSpy = vi.fn();
+    watchPositionSpy = vi.fn();
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        watchPosition: watchPositionSpy,
+        clearWatch: clearWatchSpy,
+      },
+    });
+  });
+
+  it("memanggil callback saat posisi GPS diperbarui", () => {
+    const onUpdate = vi.fn();
+    watchPositionSpy.mockImplementation((success: PositionCallback) => {
+      success({
+        coords: {
+          latitude: -7.5,
+          longitude: 110.3,
+          accuracy: 8,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+        },
+        timestamp: Date.now(),
+      } as GeolocationPosition);
+      return 123;
+    });
+
+    const unsubscribe = watchPosition(onUpdate);
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "ready",
+        coordinate: expect.objectContaining({ latitude: -7.5, longitude: 110.3 }),
+        quality: "good",
+      }),
+    );
+
+    unsubscribe();
+    expect(clearWatchSpy).toHaveBeenCalledWith(123);
+  });
+
+  it("mengirim status denied saat izin ditolak pada watchPosition", () => {
+    const onUpdate = vi.fn();
+    watchPositionSpy.mockImplementation(
+      (_success: PositionCallback, error: PositionErrorCallback) => {
+        error({ code: 1, PERMISSION_DENIED: 1, message: "denied" } as GeolocationPositionError);
+        return 456;
+      },
+    );
+
+    watchPosition(onUpdate);
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "denied",
+      }),
+    );
   });
 });

@@ -106,25 +106,44 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
 - [✓] ✅ Task 2.3 - Konfigurasi allowedDevOrigins di next.config.ts `[Mudah]` (Selesai)
   - Diperbarui: `next.config.ts` (Menambahkan `allowedDevOrigins` yang mengizinkan `192.168.100.10` dan auto-detect IPv4 dari `os.networkInterfaces()` agar chunk JS dan websocket HMR tidak terblokir cross-origin di HP)
 
+## Phase 3 - Geolocation Integration
+
+- [✓] ✅ Task 3.1 - Wrapper continuous watch & Hook Geolocation `[Sedang]` (Selesai)
+  - Dibuat: `src/features/location/use-geolocation.ts` (Hook status GPS, akurasi, kualitas, reverse geocoding otomatis via LocationIQ)
+  - Dibuat: `src/features/location/index.ts` (Barrel export fitur location)
+  - Diperbarui: `src/lib/browser/geolocation.ts` (Menambahkan `watchPosition` continuous listener dengan auto cleanup)
+  - Diperbarui: `src/lib/browser/geolocation.test.ts` (Unit tests untuk `watchPosition`)
+  - Diperbarui: `src/components/ui/StatusChip.tsx` (Mendukung `React.HTMLAttributes` pada `GpsQualityChip` & `TimeModeChip`)
+
+## Phase 4 - Metadata Editor & Snapshot Generator
+
+- [✓] ✅ Task 4.1 - Konfigurasi Sumber Metadata & Drawer Editor Sheet `[Sedang]` (Selesai)
+  - Dibuat: `src/features/metadata/use-metadata-config.ts` (State manager mode GPS vs Manual, waktu Auto vs Manual, dan snapshot generator murni `buildMetadataSnapshot`)
+  - Dibuat: `src/features/metadata/metadata-editor-sheet.tsx` (BottomSheet drawer mobile-first untuk input koordinat, nama lokasi, alamat, waktu manual, dan catatan lapangan)
+  - Dibuat: `src/features/metadata/metadata-config.test.ts` (Unit test pembekuan snapshot immutable per capture)
+  - Dibuat: `src/features/metadata/index.ts` (Barrel export fitur metadata)
+  - Diperbarui: `src/components/icons/index.tsx` (Menambahkan `CrosshairIcon`, `SlidersIcon`, `EditIcon`)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Mengintegrasikan live GPS chip, interaktif tap status bar, live watermark HUD real-time, dan pembekuan snapshot saat shutter)
+
 ## Verifikasi Baseline & Build
 
 - [✓] ✅ Task V.1 - Smoke test end-to-end lintas layer (session -> photo -> watermark -> zip) `[Sedang]` (Selesai)
   - File dibuat: `src/lib/integration.smoke.test.ts`
 - [✓] ✅ Task V.2 - `pnpm typecheck`, `pnpm lint`, `pnpm test` seluruhnya lulus `[Mudah]` (Selesai)
-  - 39/39 unit test lulus, 0 error TypeScript, 0 error ESLint
+  - 44/44 unit test lulus (14 test suites), 0 error TypeScript, 0 error ESLint
 - [✓] ✅ Task V.3 - `pnpm build` lulus tanpa error Turbopack Next.js 16 `[Mudah]` (Selesai)
 
 ## Belum Dikerjakan (Next Steps)
 
-- [ ] Task 3.1 & 4.1 - Phase 3 & 4: Geolocation Integration & Metadata Editor (`src/features/location/`, `src/features/metadata/`)
-- [ ] Task 5.1 & 6.1 - Phase 5 & 6: Capture Pipeline & Watermark Live HUD/Rendering (`src/features/watermark/`, wiring ke `src/lib/image/watermark-engine.ts`)
-- [ ] Task 9.1 & 10.1 - Phase 9 & 10: Multi-Photo Session & Session Gallery Drawer (`src/features/sessions/`)
+- [ ] Task 5.1 & 6.1 - Phase 5 & 6: Capture Pipeline ke Canvas & Watermark Live Rendering (`src/features/watermark/`, wiring ke `src/lib/image/watermark-engine.ts`)
+- [ ] Task 9.1 & 10.1 - Phase 9 & 10: Multi-Photo Session & Session Gallery Drawer (`src/features/sessions/`, wiring ke `src/lib/storage/photo-repository.ts` & `session-repository.ts`)
 - [ ] Task 11.1 - Phase 11: Single & Batch ZIP Download Trigger (`src/features/downloads/`)
 - [ ] Task 12.1 - Phase 12: PWA Manifest & Service Worker
 - [ ] Task 13.1 - Phase 13: Settings Sheet & Storage Indicator
 
 ## Ringkasan Checkpoint Saat Ini
 
-Palet warna elegan (Deep Navy, Golden Ochre, Muted Teal) telah selesai diintegrasikan secara menyeluruh pada aset, token CSS, komponen UI, top header, dan layar sambutan kamera dengan branding mandiri GeoPatriot Web.
-Aplikasi kini tampil sangat profesional, kredibel, dan berkarakter kuat, bebas error build, typecheck, dan lint.
-Selanjutnya siap melanjutkan ke **Phase 3 (Geolocation GPS Integration)** dan **Phase 4 (Metadata Editor Sheet)**.
+Phase 3 (Geolocation Live GPS & Reverse Geocoding) dan Phase 4 (Metadata Editor Sheet & Snapshot Freezing) telah selesai 100%.
+Live tracking GPS dengan kualitas sinyal informatif dan fallback manual telah aktif di viewport kamera. Pengguna dapat mengubah koordinat, waktu, dan catatan lapangan melalui drawer bottom sheet interaktif.
+Seluruh 44 unit test lulus, 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
+Selanjutnya siap melanjutkan ke **Phase 5 & 6 (Capture Pipeline & Watermark Canvas Rendering)**.

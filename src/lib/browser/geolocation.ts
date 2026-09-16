@@ -85,3 +85,51 @@ export function getCurrentPosition(
     );
   });
 }
+
+/**
+ * Memantau posisi GPS secara berkelanjutan (continuous watch).
+ * Mengembalikan fungsi unsubscribe untuk menghentikan pengawasan (clearWatch).
+ */
+export function watchPosition(
+  onUpdate: (result: GeolocationReadResult) => void,
+  options: PositionOptions = DEFAULT_POSITION_OPTIONS,
+): () => void {
+  if (!isGeolocationSupported()) {
+    onUpdate({
+      status: "unsupported",
+      errorMessage: "Browser tidak mendukung Geolocation API.",
+    });
+    return () => {};
+  }
+
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const coordinate: GeoCoordinate = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        altitude: position.coords.altitude ?? undefined,
+      };
+      onUpdate({
+        status: "ready",
+        coordinate,
+        quality: classifyGpsQuality(position.coords.accuracy),
+      });
+    },
+    (error) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        onUpdate({ status: "denied", errorMessage: "Izin lokasi ditolak oleh pengguna." });
+        return;
+      }
+      onUpdate({
+        status: "error",
+        errorMessage: error.message || "Gagal memperbarui lokasi GPS.",
+      });
+    },
+    options,
+  );
+
+  return () => {
+    navigator.geolocation.clearWatch(watchId);
+  };
+}
