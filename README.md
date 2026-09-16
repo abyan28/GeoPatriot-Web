@@ -10,45 +10,52 @@ Dokumen produk lengkap ada di `agents/`:
 - `agents/workflow-geopatriot-web.md` — urutan pengerjaan per fase
 - `agents/tasklist.md` — progress pengerjaan (update setiap task selesai)
 
-## Status Saat Ini
+## Fitur Utama
 
-Sesi ini menyelesaikan seluruh **layer non-UI**: `types/`, `lib/browser` (camera & geolocation
-wrapper), `lib/image` (watermark engine berbasis Canvas), `lib/providers` (LocationIQ +
-abstraksi geocoding/map), `lib/storage` (repository IndexedDB), dan `lib/downloads`
-(single download & ZIP client-side via fflate).
-
-**Komponen UI/halaman (`app/`, `components/`, isi `features/*`) belum dikerjakan** —
-itu akan dikerjakan terpisah menggunakan Antigravity. UI cukup memanggil fungsi yang
-sudah tersedia di `src/lib/*` dan `src/types/*`; jangan mengakses IndexedDB atau
-LocationIQ secara langsung dari komponen (lihat `agents/rules-geopatriot-web.md` #2.4-2.5).
+- **Kamera & Viewfinder Mobile-First**: Antarmuka responsif ramah ibu jari, live view, switch kamera depan/belakang, serta shutter flash instan.
+- **Camera Zoom Tingkat Lanjut**: Deteksi kapabilitas hardware W3C, pinch-to-zoom dua jari native dengan `touch-action: none`, dan tombol preset praktis (`1×`, `2×`, dll.) dengan graceful fallback.
+- **GPS & Geocoding Cerdas**: Pelacakan akurasi sinyal live, reverse geocoding via LocationIQ, serta auto-fallback ke Mode Manual tanpa memblokir alur kerja lapangan.
+- **Watermark Engine Berbasis Canvas**: Overlay watermark resmi dengan 3 pilihan template (`Default`, `Ringkas`, `Detail`), posisi atas/bawah, slider opasitas latar, dan toggle visibilitas 8 metadata.
+- **Manajemen Sesi & Galeri Foto**: Penyimpanan lokal aman di IndexedDB, navigasi galeri multi-kolom, pratinjau foto resolusi penuh, pemilihan banyak foto (multi-select), dan unduh ZIP client-side instan (`fflate`).
+- **Progressive Web App (PWA)**: Web manifest mandiri (standalone), service worker cache offline, serta banner deteksi koneksi lapangan.
+- **Pengaturan & Indikator Penyimpanan**: Estimasi memori live (`navigator.storage.estimate()`), pembersihan aman foto terunduh (Rules #10.5), dan reset data aman.
+- **Diagnostik Kesehatan Sistem**: Pemantauan 6 subsistem eksplisit (`camera`, `zoom`, `gps`, `geocoding`, `map`, `storage`), banner peringatan kuota proaktif, serta panduan izin browser untuk iOS Safari & Android Chrome.
 
 ## Menjalankan Proyek
 
 ```bash
 pnpm install
-pnpm dev          # jalankan dev server (http://localhost:3000)
-pnpm typecheck    # tsc --noEmit, strict mode
-pnpm lint         # ESLint
-pnpm test         # Vitest, unit test untuk src/lib dan src/types
-pnpm format       # Prettier --write
+pnpm dev            # Jalankan dev server HTTP lokal (http://localhost:3000)
+pnpm dev:https      # Jalankan dev server HTTPS untuk pengujian kamera/GPS di HP
+pnpm typecheck      # Verifikasi TypeScript (strict mode, tsc --noEmit)
+pnpm lint           # Audit kode ESLint
+pnpm test           # Menjalankan 83 unit & integration test Vitest
+pnpm build          # Kompilasi produksi Next.js 16 Turbopack
 ```
 
 ## Struktur Folder
 
 ```text
 src/
-  app/                 shell Next.js default — belum dikembangkan (Antigravity)
-  components/           placeholder — belum dikembangkan (Antigravity)
+  app/              App Router Next.js (layout, page, globals.css, manifest)
+  components/       Komponen UI dasar (Button, BottomSheet, Dialog, Toast, Icons, Card, dsb.)
   features/
-    camera/ location/ metadata/ watermark/
-    sessions/ downloads/ settings/   placeholder — belum dikembangkan (Antigravity)
+    camera/         Viewport kamera, controls, zoom, permission fallback, capture pipeline
+    location/       Hook geolocation, GPS quality chip, provider geocoding
+    metadata/       Metadata editor sheet, konfigurasi mode manual/waktu, buildSnapshot
+    watermark/      Pengaturan visual template watermark
+    sessions/       Drawer galeri sesi, multi-photo grid, card pratinjau
+    downloads/      Download manager, ZIP batch generator, dialog progres unduh
+    settings/       Settings sheet, manajemen preferensi, meteran penyimpanan IndexedDB
+    diagnostics/    Evaluator status eksplisit 6 subsistem, banner peringatan, modal diagnostik
+    pwa/            Hook PWA, banner offline / ajakan install
   lib/
-    browser/            wrapper getUserMedia() & Geolocation API
-    image/               watermark engine (Canvas) + templates (default/ringkas/detail)
-    providers/           implementasi LocationIQ + provider-factory (entry point tunggal)
-    storage/              repository IndexedDB (session/photo/settings)
-    downloads/            single download, ZIP client-side (fflate), filename generator
-  types/                 kontrak data seluruh sistem
+    browser/        Wrapper getUserMedia, kamera zoom, dan Geolocation API
+    image/          Watermark canvas rendering engine, templates layout
+    providers/      LocationIQ provider + provider factory
+    storage/        Repository IndexedDB (photos, sessions, settings)
+    downloads/      Single download, fflate ZIP compression, generator nama berkas
+  types/            Kontrak data domain (metadata, location, watermark, session, diagnostics)
 ```
 
 ## Environment Variables
