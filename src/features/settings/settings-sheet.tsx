@@ -253,14 +253,14 @@ export function SettingsSheet({
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-zinc-300">Opasitas</label>
+                    <label className="text-xs font-bold text-zinc-300">Opasitas Panel</label>
                     <span className="text-xs font-mono text-[#c5984f]">
                       {Math.round(watermarkSettings.opacity * 100)}%
                     </span>
                   </div>
                   <input
                     type="range"
-                    min="50"
+                    min="10"
                     max="100"
                     step="5"
                     value={Math.round(watermarkSettings.opacity * 100)}
@@ -271,6 +271,73 @@ export function SettingsSheet({
                     className="w-full accent-[#c5984f] cursor-pointer"
                   />
                 </div>
+              </div>
+
+              {/* Ukuran Teks & Thumbnail Peta (selaras GeoPatriot Mobile) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-zinc-300">Ukuran Teks</label>
+                    <span className="text-xs font-mono text-[#c5984f]">
+                      {watermarkSettings.fontSizePx}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="11"
+                    max="22"
+                    step="1"
+                    value={watermarkSettings.fontSizePx}
+                    onChange={(e) => {
+                      void updateWatermarkSettings({ fontSizePx: Number(e.target.value) });
+                      onSettingsChanged?.();
+                    }}
+                    className="w-full accent-[#c5984f] cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-zinc-300">Thumbnail Peta</label>
+                    <span className="text-xs font-mono text-[#c5984f]">
+                      {watermarkSettings.mapThumbnailSizePx}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="80"
+                    max="220"
+                    step="10"
+                    value={watermarkSettings.mapThumbnailSizePx}
+                    onChange={(e) => {
+                      void updateWatermarkSettings({ mapThumbnailSizePx: Number(e.target.value) });
+                      onSettingsChanged?.();
+                    }}
+                    className="w-full accent-[#c5984f] cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Level Zoom Peta Statis */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-zinc-300">Level Zoom Peta</label>
+                  <span className="text-xs font-mono text-[#c5984f]">
+                    Level {watermarkSettings.mapZoom}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="12"
+                  max="18"
+                  step="1"
+                  value={watermarkSettings.mapZoom}
+                  onChange={(e) => {
+                    void updateWatermarkSettings({ mapZoom: Number(e.target.value) });
+                    onSettingsChanged?.();
+                  }}
+                  className="w-full accent-[#c5984f] cursor-pointer"
+                />
               </div>
 
               {/* Field yang Ditampilkan */}

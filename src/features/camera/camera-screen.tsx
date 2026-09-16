@@ -266,22 +266,20 @@ export function CameraScreen() {
     <div
       ref={rootRef}
       className={`relative w-full h-[100dvh] bg-[#08111d] flex flex-col justify-between overflow-hidden shadow-2xl ${
-        isFullscreen ? "max-w-none" : "max-w-md mx-auto"
+        isFullscreen || isLandscape ? "max-w-none" : "max-w-md mx-auto"
       }`}
     >
       {/* Top Header Bar: Branding & GPS Status Chip (Clickable) */}
-      {/* Padding atas mempertimbangkan safe-area (notch/Dynamic Island) — relevan
-          saat browser chrome hilang, baik via Fullscreen API maupun PWA standalone. */}
-      <header className="absolute top-0 inset-x-0 z-30 pt-[max(1rem,env(safe-area-inset-top))] pb-3 px-4 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none">
+      <header className="absolute top-0 inset-x-0 z-30 pt-[max(1rem,env(safe-area-inset-top))] pb-3 px-3 sm:px-4 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none">
         {/* Branding Logo: Ketuk untuk membuka Diagnostik Kesehatan Sistem (Phase 14) */}
         <button
           type="button"
           onClick={() => setIsDiagnosticsOpen(true)}
           aria-label="Buka Diagnostik Kesehatan Sistem"
           title="Diagnostik Kesehatan Sistem"
-          className="pointer-events-auto flex items-center gap-2.5 text-left active:scale-95 transition-transform group"
+          className="pointer-events-auto flex items-center gap-2 text-left active:scale-95 transition-transform group shrink-0"
         >
-          <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-lg border border-[#c5984f]/60 bg-[#08111d] flex items-center justify-center shrink-0">
+          <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-lg border border-[#c5984f]/60 bg-[#08111d] flex items-center justify-center shrink-0">
             <Image
               src="/app-icon.png"
               alt="Logo GeoPatriot Web"
@@ -298,27 +296,26 @@ export function CameraScreen() {
             ) : null}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-black text-white tracking-wide leading-tight drop-shadow-md group-hover:text-[#dcab55] transition-colors">
+            <span className="text-xs sm:text-sm font-black text-white tracking-wide leading-tight drop-shadow-md group-hover:text-[#dcab55] transition-colors">
               GeoPatriot
             </span>
-            <span className="text-[10px] font-semibold text-[#dcab55] tracking-tight leading-none drop-shadow">
+            <span className="text-[9px] sm:text-[10px] font-semibold text-[#dcab55] tracking-tight leading-none drop-shadow">
               GPS Camera
             </span>
           </div>
         </button>
 
-        {/* GPS / Manual Status Chip & Tombol Pengaturan Cepat (Phase 13) */}
-        <div className="pointer-events-auto flex items-center gap-2">
+        {/* GPS / Manual Status Chip & Tombol Pengaturan Cepat */}
+        <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
           {locationMode === "manual" ? (
             <StatusChip
               label="Mode Manual"
-              subLabel="Koordinat Tetap"
               tone="amber"
               icon={<EditIcon size={12} />}
               onClick={() => setIsMetadataSheetOpen(true)}
               role="button"
               aria-label="Mode lokasi manual. Ketuk untuk ubah koordinat."
-              className="cursor-pointer active:scale-95 transition-transform"
+              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
             />
           ) : geoStatus === "ready" && geoCoord ? (
             <GpsQualityChip
@@ -327,7 +324,7 @@ export function CameraScreen() {
               onClick={() => setIsMetadataSheetOpen(true)}
               role="button"
               aria-label="Status kualitas GPS. Ketuk untuk pengaturan metadata."
-              className="cursor-pointer active:scale-95 transition-transform"
+              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
             />
           ) : geoStatus === "searching" ? (
             <StatusChip
@@ -337,27 +334,25 @@ export function CameraScreen() {
               onClick={() => setIsMetadataSheetOpen(true)}
               role="button"
               aria-label="Sedang mencari sinyal GPS. Ketuk untuk opsi manual."
-              className="cursor-pointer active:scale-95 transition-transform"
+              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
             />
           ) : geoStatus === "denied" ? (
             <StatusChip
               label="GPS Ditolak"
-              subLabel="Ketuk ganti Manual"
               tone="rose"
               onClick={() => setIsMetadataSheetOpen(true)}
               role="button"
               aria-label="Izin GPS ditolak. Ketuk untuk beralih ke input manual."
-              className="cursor-pointer active:scale-95 transition-transform"
+              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
             />
           ) : (
             <StatusChip
               label="GPS Offline"
-              subLabel="Gunakan Manual"
               tone="zinc"
               onClick={() => setIsMetadataSheetOpen(true)}
               role="button"
               aria-label="GPS tidak tersedia. Ketuk untuk input manual."
-              className="cursor-pointer active:scale-95 transition-transform"
+              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
             />
           )}
 
@@ -367,12 +362,12 @@ export function CameraScreen() {
               onClick={handleToggleFullscreen}
               aria-label={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
               title={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
-              className="w-11 h-11 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f]"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
             >
               {isFullscreen ? (
-                <MinimizeIcon size={16} className="text-[#dcab55]" />
+                <MinimizeIcon size={15} className="text-[#dcab55]" />
               ) : (
-                <MaximizeIcon size={16} className="text-[#dcab55]" />
+                <MaximizeIcon size={15} className="text-[#dcab55]" />
               )}
             </button>
           )}
@@ -382,9 +377,9 @@ export function CameraScreen() {
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Buka Pengaturan Aplikasi"
             title="Pengaturan Aplikasi"
-            className="w-11 h-11 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f]"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
           >
-            <SettingsIcon size={16} className="text-[#dcab55]" />
+            <SettingsIcon size={15} className="text-[#dcab55]" />
           </button>
         </div>
       </header>
@@ -421,20 +416,21 @@ export function CameraScreen() {
           zoomCapabilities={zoomCapabilities}
           onZoomChange={setZoom}
         >
-          {/* Watermark Live HUD Overlay: Compact Content-Based Card sesuai referensi
-              GeoPatriot Mobile (Map di kiri, teks di kanan, badge GeoPatriot di atas-kanan).
-              Di-anchor di kiri-bawah (left-3) dengan clearance dinamis (footerHeight) di portrait,
-              dan max-w-[48vw] di landscape sehingga BEBAS 100% dari tumpang tindih tombol shutter.
+          {/* Watermark Live HUD Overlay: Compact Content-Based Card berposisi CENTER
+              (horizontal center di portrait & landscape).
+              Opasitas tipis/translucent terhubung dengan preferensi watermarkSettings.opacity pengguna.
               Dilengkapi tombol flip posisi (atas/bawah) dan tombol minimize untuk framing leluasa. */}
           {isHudMinimized ? (
             <div
-              className="absolute left-3 pointer-events-auto transition-all duration-200 z-20"
+              className="absolute pointer-events-auto transition-all duration-200 z-20"
               style={{
+                left: isLandscape ? "calc(50% - 44px)" : "50%",
+                transform: "translateX(-50%)",
                 bottom:
                   hudPosition === "top"
                     ? "auto"
                     : isLandscape
-                    ? "1rem"
+                    ? "1.25rem"
                     : Math.max(footerHeight + 14, 120),
                 top:
                   hudPosition === "top"
@@ -446,7 +442,7 @@ export function CameraScreen() {
                 type="button"
                 onClick={() => setIsHudMinimized(false)}
                 aria-label="Tampilkan panel watermark"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#08111d]/90 hover:bg-[#0e2035] backdrop-blur-md border border-[#c5984f]/60 text-white shadow-xl active:scale-95 transition-all text-xs font-semibold"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#08111d]/75 hover:bg-[#0e2035] backdrop-blur-md border border-[#c5984f]/60 text-white shadow-xl active:scale-95 transition-all text-xs font-semibold"
               >
                 <MapPinIcon size={12} className="text-[#c5984f]" />
                 <span className="truncate max-w-[180px]">{activeLocationName}</span>
@@ -455,26 +451,36 @@ export function CameraScreen() {
             </div>
           ) : (
             <div
-              className="absolute left-3 pointer-events-auto transition-[bottom,top,transform] duration-200 z-20 flex flex-col items-end"
+              className="absolute pointer-events-auto transition-[bottom,top,transform] duration-200 z-20 flex flex-col items-end"
               style={{
+                left: isLandscape ? "calc(50% - 44px)" : "50%",
+                transform: "translateX(-50%)",
                 bottom:
                   hudPosition === "top"
                     ? "auto"
                     : isLandscape
-                    ? "1rem"
+                    ? "1.25rem"
                     : Math.max(footerHeight + 14, 120),
                 top:
                   hudPosition === "top"
                     ? "max(4.5rem, env(safe-area-inset-top) + 3.5rem)"
                     : "auto",
                 maxWidth: isLandscape
-                  ? "min(48vw, 360px)"
-                  : "min(calc(100vw - 1.5rem), 340px)",
+                  ? "min(50vw, 380px)"
+                  : "min(calc(100vw - 2rem), 340px)",
               }}
             >
-              {/* Lencana Brand GeoPatriot menempel di pojok kanan-atas card (selaras mobile reference) */}
+              {/* Lencana Brand GeoPatriot menempel di pojok kanan-atas card */}
               {watermarkSettings.visibleFields.branding && (
-                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-t-xl bg-[#08111d]/95 border-t border-x border-[#2f6d8b]/50 shadow-lg text-[10px] text-white -mb-0.5 mr-2 relative z-10">
+                <div
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-t-xl backdrop-blur-md border-t border-x border-[#2f6d8b]/50 shadow-lg text-[10px] text-white -mb-0.5 mr-2 relative z-10"
+                  style={{
+                    backgroundColor: `rgba(8, 17, 29, ${Math.max(
+                      0.45,
+                      Math.min(0.95, watermarkSettings.opacity + 0.1),
+                    )})`,
+                  }}
+                >
                   <div className="w-3.5 h-3.5 rounded-full overflow-hidden shrink-0 flex items-center justify-center">
                     <Image src="/app-icon.png" alt="GeoPatriot" width={14} height={14} />
                   </div>
@@ -509,7 +515,7 @@ export function CameraScreen() {
                 </div>
               )}
 
-              {/* Card Watermark Utama (Compact Content-Based, Map di Kiri, Metadata di Kanan) */}
+              {/* Card Watermark Utama (Center-Aligned, Translucent, Map di Kiri, Metadata di Kanan) */}
               <div
                 onClick={() => setIsMetadataSheetOpen(true)}
                 onKeyDown={(event) => {
@@ -521,12 +527,18 @@ export function CameraScreen() {
                 role="button"
                 tabIndex={0}
                 aria-label="Buka pengaturan metadata watermark"
-                className="w-full p-2.5 rounded-2xl bg-[#08111d]/90 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/50 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
+                className="w-full p-2.5 rounded-2xl backdrop-blur-md border border-[#2f6d8b]/50 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
+                style={{
+                  backgroundColor: `rgba(8, 17, 29, ${Math.max(
+                    0.35,
+                    Math.min(0.85, watermarkSettings.opacity),
+                  )})`,
+                }}
               >
                 <div className="flex items-center gap-2.5">
-                  {/* Sisi Kiri: Map Thumbnail (selaras GeoPatriot Mobile) */}
+                  {/* Sisi Kiri: Map Thumbnail */}
                   {watermarkSettings.visibleFields.mapThumbnail && (
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#0e2035] border border-[#2f6d8b]/40 shrink-0 flex items-center justify-center shadow-inner">
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#0e2035]/80 border border-[#2f6d8b]/40 shrink-0 flex items-center justify-center shadow-inner">
                       {mapThumbnailUrl ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
@@ -556,7 +568,7 @@ export function CameraScreen() {
                       </span>
                     </div>
 
-                    {/* Baris 2: Alamat Lengkap (opsional/terpotong) */}
+                    {/* Baris 2: Alamat Lengkap */}
                     {watermarkSettings.visibleFields.address && geoAddress?.address && (
                       <p className="text-[10px] text-zinc-300 truncate">
                         {geoAddress.address}
@@ -606,22 +618,41 @@ export function CameraScreen() {
         </CameraViewport>
       </main>
 
-      {/* Bottom Controls (Thumb Zone) */}
+      {/* Kontrol Kamera Adaptif: Bilah Kanan (Right Sidebar) saat Landscape, Bilah Bawah (Footer) saat Portrait */}
       {cameraStatus === "ready" && (
-        <footer ref={footerRef} className="absolute bottom-0 inset-x-0 z-30 pointer-events-auto">
-          <CameraControls
-            onCapture={handleCapture}
-            onToggleFacingMode={toggleFacingMode}
-            sessionPhotoCount={sessionPhotoCount}
-            onOpenGallery={handleOpenGallery}
-            isCapturing={isCapturing}
-            lastPhoto={lastPhoto}
-            zoom={zoom}
-            zoomCapabilities={zoomCapabilities}
-            zoomPresets={zoomPresets}
-            onZoomChange={setZoom}
-          />
-        </footer>
+        isLandscape ? (
+          <aside className="absolute right-0 inset-y-0 z-30 pointer-events-auto flex items-center justify-center">
+            <CameraControls
+              onCapture={handleCapture}
+              onToggleFacingMode={toggleFacingMode}
+              sessionPhotoCount={sessionPhotoCount}
+              onOpenGallery={handleOpenGallery}
+              isCapturing={isCapturing}
+              lastPhoto={lastPhoto}
+              zoom={zoom}
+              zoomCapabilities={zoomCapabilities}
+              zoomPresets={zoomPresets}
+              onZoomChange={setZoom}
+              isLandscape={true}
+            />
+          </aside>
+        ) : (
+          <footer ref={footerRef} className="absolute bottom-0 inset-x-0 z-30 pointer-events-auto">
+            <CameraControls
+              onCapture={handleCapture}
+              onToggleFacingMode={toggleFacingMode}
+              sessionPhotoCount={sessionPhotoCount}
+              onOpenGallery={handleOpenGallery}
+              isCapturing={isCapturing}
+              lastPhoto={lastPhoto}
+              zoom={zoom}
+              zoomCapabilities={zoomCapabilities}
+              zoomPresets={zoomPresets}
+              onZoomChange={setZoom}
+              isLandscape={false}
+            />
+          </footer>
+        )
       )}
 
       {/* Drawer Editor Metadata & Lokasi (Phase 4) */}

@@ -24,10 +24,13 @@ export function GpsFallbackAlert({
   // Hanya tampil saat pengguna berada pada mode GPS dan terjadi kendala
   if (locationMode !== "gps") return null;
 
+  // Saat izin GPS ditolak, notifikasi sudah diwakili oleh chip merah di header atas.
+  // Banner memanjang di-skip agar tidak menutupi layar kamera (user feedback).
   const isDenied = gpsState === "gps_denied";
-  const isPoor = gpsState === "gps_ready" && (gpsAccuracy ?? 0) > 50;
+  if (isDenied) return null;
 
-  if (!isDenied && !isPoor) return null;
+  const isPoor = gpsState === "gps_ready" && (gpsAccuracy ?? 0) > 50;
+  if (!isPoor) return null;
 
   return (
     <div className="w-full px-3 py-1.5 bg-[#08111d]/90 border-b border-[#2f6d8b]/40 backdrop-blur-md flex items-center justify-between gap-2 shadow text-white">

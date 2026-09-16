@@ -358,4 +358,24 @@ describe("renderWatermark", () => {
     expect(tlX).toBe(16); // margin
     expect(tlY).toBe(16); // top
   });
+
+  it("memposisikan panel di tengah horizontal foto saat posisi bottom atau top", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const settingsBottomCenter = createDefaultTemplate({ position: "bottom" });
+
+    await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: settingsBottomCenter,
+      canvasFactory: () => canvas,
+    });
+
+    const calls = (ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls;
+    const [pX, , pWidth] = calls[0] as [number, number, number, number];
+    // panelX harus berada di tengah horizontal: (1080 - pWidth) / 2
+    expect(pX).toBe(Math.round((1080 - pWidth) / 2));
+    expect(pX).toBeGreaterThan(16);
+  });
 });

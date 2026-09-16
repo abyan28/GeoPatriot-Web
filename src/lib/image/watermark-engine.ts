@@ -234,6 +234,9 @@ function drawWatermarkPanel(
 
   switch (settings.position) {
     case "top":
+      panelX = Math.round((canvasWidth - panelWidth) / 2);
+      panelY = margin;
+      break;
     case "topLeft":
       panelX = margin;
       panelY = margin;
@@ -246,10 +249,13 @@ function drawWatermarkPanel(
       panelX = canvasWidth - margin - panelWidth;
       panelY = canvasHeight - margin - panelHeight;
       break;
-    case "bottom":
     case "bottomLeft":
-    default:
       panelX = margin;
+      panelY = canvasHeight - margin - panelHeight;
+      break;
+    case "bottom":
+    default:
+      panelX = Math.round((canvasWidth - panelWidth) / 2);
       panelY = canvasHeight - margin - panelHeight;
       break;
   }
