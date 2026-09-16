@@ -20,4 +20,22 @@ describe("createZipBlob", () => {
       expect(result.blob.size).toBeGreaterThan(0);
     }
   });
+
+  it("memanggil onProgress callback dengan tahapan progres yang valid", async () => {
+    const entries = [
+      { filename: "foto-1.jpg", blob: new Blob(["konten-1"]) },
+      { filename: "foto-2.jpg", blob: new Blob(["konten-2"]) },
+    ];
+
+    const progressUpdates: Array<{ phase: string; percent: number }> = [];
+    const result = await createZipBlob(entries, (p) => {
+      progressUpdates.push({ phase: p.phase, percent: p.percent });
+    });
+
+    expect(result.status).toBe("success");
+    expect(progressUpdates.length).toBeGreaterThanOrEqual(3);
+    expect(progressUpdates.some((p) => p.phase === "reading")).toBe(true);
+    expect(progressUpdates.some((p) => p.phase === "compressing")).toBe(true);
+    expect(progressUpdates.some((p) => p.phase === "done" && p.percent === 100)).toBe(true);
+  });
 });

@@ -6,16 +6,13 @@ import {
   listPhotosBySession,
   deletePhoto,
   deletePhotosBySession,
-  updatePhoto,
 } from "@/lib/storage/photo-repository";
 import {
   listSessions,
   createSession,
   deleteSession,
 } from "@/lib/storage/session-repository";
-import { createZipBlob, type ZipEntry } from "@/lib/downloads/zip-download";
-import { downloadBlob } from "@/lib/downloads/single-download";
-import { buildPhotoFilename, buildZipFilename } from "@/lib/downloads/filename";
+import { executeSingleDownload, executeBatchZipDownload } from "@/features/downloads";
 import { createDefaultTemplate } from "@/lib/image/templates";
 
 export interface UseSessionGalleryReturn {
@@ -39,6 +36,7 @@ export interface UseSessionGalleryReturn {
   downloadSelectedAsZip: () => Promise<{ success: boolean; filename?: string; error?: string }>;
   downloadAllAsZip: () => Promise<{ success: boolean; filename?: string; error?: string }>;
   createNewSession: (mode?: SessionMode) => Promise<string>;
+  reloadPhotos: () => Promise<void>;
 }
 
 /**
@@ -253,17 +251,9 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
    * Mengunduh satu foto dan menandai status `downloaded = true` (PRD #14).
    */
   const downloadSingle = useCallback(async (photo: Photo): Promise<void> => {
-    const blobToDownload = photo.processedBlob || photo.originalBlob;
-    const filename = buildPhotoFilename(photo.snapshot.capturedAt);
-    downloadBlob(blobToDownload, filename);
-
-    // Tandai status downloaded di IndexedDB
-    try {
-      const updated: Photo = { ...photo, downloaded: true };
-      await updatePhoto(updated);
-      setPhotos((prev) => prev.map((p) => (p.id === photo.id ? updated : p)));
-    } catch {
-      // Abaikan bila update status gagal
+    const success = await executeSingleDownload(photo);
+    if (success) {
+      setPhotos((prev) => prev.map((p) => (p.id === photo.id ? { ...p, downloaded: true } : p)));
     }
   }, []);
 
@@ -281,39 +271,16 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
     }
 
     setIsDownloadingZip(true);
-    try {
-      const zipEntries = prepareZipEntries(selectedPhotos);
-      const zipResult = await createZipBlob(zipEntries);
-      if (zipResult.status !== "success") {
-        setIsDownloadingZip(false);
-        return { success: false, error: zipResult.message };
-      }
+    const res = await executeBatchZipDownload(selectedPhotos);
+    setIsDownloadingZip(false);
 
-      const zipFilename = buildZipFilename();
-      downloadBlob(zipResult.blob, zipFilename);
-
-      // Tandai seluruh foto yang diunduh sebagai downloaded = true
-      for (const p of selectedPhotos) {
-        try {
-          await updatePhoto({ ...p, downloaded: true });
-        } catch {
-          // Lanjutkan
-        }
-      }
-
+    if (res.success) {
       setPhotos((prev) =>
         prev.map((p) => (selectedPhotoIds.has(p.id) ? { ...p, downloaded: true } : p)),
       );
-
-      setIsDownloadingZip(false);
-      return { success: true, filename: zipFilename };
-    } catch (err) {
-      setIsDownloadingZip(false);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : "Gagal mengompresi foto ke ZIP.",
-      };
     }
+
+    return res;
   }, [photos, selectedPhotoIds]);
 
   /**
@@ -329,54 +296,41 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
     }
 
     setIsDownloadingZip(true);
-    try {
-      const zipEntries = prepareZipEntries(photos);
-      const zipResult = await createZipBlob(zipEntries);
-      if (zipResult.status !== "success") {
-        setIsDownloadingZip(false);
-        return { success: false, error: zipResult.message };
-      }
+    const res = await executeBatchZipDownload(photos);
+    setIsDownloadingZip(false);
 
-      const zipFilename = buildZipFilename();
-      downloadBlob(zipResult.blob, zipFilename);
-
-      // Tandai seluruh foto sesi sebagai downloaded = true
-      for (const p of photos) {
-        try {
-          await updatePhoto({ ...p, downloaded: true });
-        } catch {
-          // Lanjutkan
-        }
-      }
-
+    if (res.success) {
       setPhotos((prev) => prev.map((p) => ({ ...p, downloaded: true })));
-
-      setIsDownloadingZip(false);
-      return { success: true, filename: zipFilename };
-    } catch (err) {
-      setIsDownloadingZip(false);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : "Gagal mengompresi seluruh sesi ke ZIP.",
-      };
     }
+
+    return res;
   }, [photos]);
 
   /**
-   * Membuat sesi baru.
+   * Memuat ulang daftar foto sesi yang sedang aktif.
+   */
+  const reloadPhotos = useCallback(async () => {
+    if (activeSessionId) {
+      await loadPhotosForSession(activeSessionId);
+    }
+  }, [activeSessionId, loadPhotosForSession]);
+
+  /**
+   * Membuat sesi baru dengan mode yang ditentukan (Phase 9).
    */
   const createNewSessionAction = useCallback(
     async (mode: SessionMode = "gps-auto-time"): Promise<string> => {
       const newSessionId = `session_${Date.now()}`;
-      const newSession: Session = {
+      const sessionData: Session = {
         id: newSessionId,
         createdAt: new Date().toISOString(),
         mode,
         watermarkSettings: createDefaultTemplate(),
       };
 
-      await createSession(newSession);
-      setSessions((prev) => [newSession, ...prev]);
+      await createSession(sessionData);
+
+      setSessions((prev) => [sessionData, ...prev]);
       setActiveSessionId(newSessionId);
       setPhotos([]);
       setSelectedPhotoIds(new Set());
@@ -416,25 +370,8 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
     downloadSelectedAsZip,
     downloadAllAsZip,
     createNewSession: createNewSessionAction,
+    reloadPhotos,
   };
 }
 
-/**
- * Menyiapkan daftar ZipEntry dari array Photo untuk pembuatan berkas ZIP client-side.
- * Memberikan penamaan terstruktur berurutan agar foto terurut saat diekstrak.
- *
- * @param photos Daftar foto yang akan dikonversi menjadi entri ZIP.
- * @returns Array ZipEntry berisi nama file dan Blob gambar.
- */
-export function prepareZipEntries(photos: Photo[]): ZipEntry[] {
-  return photos.map((photo, index) => {
-    const ext = "jpg";
-    const baseName = buildPhotoFilename(photo.snapshot.capturedAt, ext);
-    const filename = `${index + 1}_${baseName}`;
-    return {
-      filename,
-      blob: photo.processedBlob || photo.originalBlob,
-    };
-  });
-}
-
+export { prepareZipEntries } from "@/features/downloads";

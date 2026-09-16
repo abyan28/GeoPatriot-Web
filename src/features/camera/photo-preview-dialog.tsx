@@ -5,7 +5,7 @@ import type { Photo } from "@/types/session";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { DownloadIcon, MapPinIcon, ClockIcon } from "@/components/icons";
-import { downloadBlob } from "@/lib/downloads/single-download";
+import { executeSingleDownload } from "@/features/downloads";
 import { buildPhotoFilename } from "@/lib/downloads/filename";
 import { useToast } from "@/components/ui/Toast";
 
@@ -50,10 +50,13 @@ function PhotoPreviewContent({
     if (onDownload) {
       await onDownload(photo);
     } else {
-      const blobToDownload = photo.processedBlob || photo.originalBlob;
-      const filename = buildPhotoFilename(photo.snapshot.capturedAt);
-      downloadBlob(blobToDownload, filename);
-      showToast(`Foto diunduh: ${filename}`, "success");
+      const success = await executeSingleDownload(photo);
+      if (success) {
+        const filename = buildPhotoFilename(photo.snapshot.capturedAt);
+        showToast(`Foto diunduh: ${filename}`, "success");
+      } else {
+        showToast("Gagal mengunduh foto", "error");
+      }
     }
   };
 

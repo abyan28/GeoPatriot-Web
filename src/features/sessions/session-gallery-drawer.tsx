@@ -21,6 +21,7 @@ import {
 } from "@/components/icons";
 import { useSessionGallery } from "./use-session-gallery";
 import { PhotoPreviewDialog } from "@/features/camera/photo-preview-dialog";
+import { useDownloadManager, DownloadProgressDialog } from "@/features/downloads";
 
 export interface SessionGalleryDrawerProps {
   isOpen: boolean;
@@ -139,6 +140,7 @@ function SessionGalleryContent({
 }) {
   const { showToast } = useToast();
   const gallery = useSessionGallery(activeSessionId);
+  const downloadManager = useDownloadManager();
   const {
     sessions,
     activeSession,
@@ -153,9 +155,6 @@ function SessionGalleryContent({
     deleteSelectedPhotos,
     deleteSinglePhoto,
     clearCurrentSession,
-    downloadSingle,
-    downloadSelectedAsZip,
-    downloadAllAsZip,
     createNewSession,
   } = gallery;
 
@@ -167,23 +166,25 @@ function SessionGalleryContent({
   const isAllSelected = photos.length > 0 && selectedPhotoIds.size === photos.length;
 
   /**
-   * Eksekusi unduhan ZIP untuk foto yang dipilih atau seluruh sesi (PRD #15).
+   * Eksekusi unduhan ZIP untuk foto yang dipilih atau seluruh sesi dengan pelacakan progres (Phase 11 / PRD #15).
    */
   const handleDownloadZip = async () => {
-    if (selectedPhotoIds.size > 0) {
-      const res = await downloadSelectedAsZip();
-      if (res.success) {
-        showToast(`Berhasil mengunduh ZIP: ${res.filename}`, "success");
-      } else {
-        showToast(res.error || "Gagal mengunduh ZIP", "error");
-      }
+    const targetPhotos =
+      selectedPhotoIds.size > 0
+        ? photos.filter((p) => selectedPhotoIds.has(p.id))
+        : photos;
+
+    if (targetPhotos.length === 0) {
+      showToast("Tidak ada foto yang dipilih untuk diunduh.", "error");
+      return;
+    }
+
+    const res = await downloadManager.downloadBatchZip(targetPhotos);
+    if (res.success) {
+      showToast(`Berhasil mengunduh ZIP: ${res.filename}`, "success");
+      await gallery.reloadPhotos();
     } else {
-      const res = await downloadAllAsZip();
-      if (res.success) {
-        showToast(`Berhasil mengunduh seluruh sesi ke ZIP: ${res.filename}`, "success");
-      } else {
-        showToast(res.error || "Gagal mengunduh ZIP", "error");
-      }
+      showToast(res.error || "Gagal mengunduh ZIP", "error");
     }
   };
 
@@ -321,7 +322,7 @@ function SessionGalleryContent({
               variant="primary"
               size="sm"
               onClick={handleDownloadZip}
-              isLoading={isDownloadingZip}
+              isLoading={isDownloadingZip || downloadManager.isDownloading}
               leftIcon={<ArchiveIcon size={14} />}
               className="text-xs font-semibold"
             >
@@ -432,8 +433,13 @@ function SessionGalleryContent({
         isOpen={Boolean(previewPhoto)}
         onClose={() => setPreviewPhoto(null)}
         onDownload={async (p) => {
-          await downloadSingle(p);
-          showToast("Foto berhasil diunduh.", "success");
+          const success = await downloadManager.downloadSingle(p);
+          if (success) {
+            await gallery.reloadPhotos();
+            showToast("Foto berhasil diunduh.", "success");
+          } else {
+            showToast("Gagal mengunduh foto.", "error");
+          }
         }}
         onDelete={async (p) => {
           await deleteSinglePhoto(p.id);
@@ -442,6 +448,12 @@ function SessionGalleryContent({
           }
           showToast("Foto berhasil dihapus.", "info");
         }}
+      />
+
+      {/* Dialog Progres Unduhan ZIP Real-Time (Phase 11 / PRD #15) */}
+      <DownloadProgressDialog
+        state={downloadManager.state}
+        onClose={downloadManager.closeDialog}
       />
     </div>
   );
