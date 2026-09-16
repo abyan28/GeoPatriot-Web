@@ -1,0 +1,116 @@
+import { describe, expect, it, vi } from "vitest";
+import type { WatermarkData } from "@/types/watermark";
+import { createDefaultTemplate } from "./templates";
+import { renderWatermark, type Canvas2DLike, type CanvasLike } from "./watermark-engine";
+
+const SAMPLE_DATA: WatermarkData = {
+  snapshot: {
+    coordinate: { latitude: -6.2, longitude: 106.8, accuracy: 5 },
+    locationName: "Monas",
+    capturedAt: "2026-09-16T01:31:12.000Z",
+    timezone: "Asia/Jakarta",
+    metadataSource: { location: "gps", time: "auto" },
+  },
+};
+
+function createFakeContext(): Canvas2DLike {
+  return {
+    drawImage: vi.fn(),
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    fillStyle: "",
+    font: "",
+    globalAlpha: 1,
+    textBaseline: "top",
+  };
+}
+
+function createFakeCanvas(shouldFailEncode = false): { canvas: CanvasLike; ctx: Canvas2DLike } {
+  const ctx = createFakeContext();
+  const canvas: CanvasLike = {
+    width: 0,
+    height: 0,
+    getContext: () => ctx,
+    toBlob: (callback) => {
+      if (shouldFailEncode) {
+        callback(null);
+        return;
+      }
+      callback(new Blob(["fake-jpeg"], { type: "image/jpeg" }));
+    },
+  };
+  return { canvas, ctx };
+}
+
+describe("renderWatermark", () => {
+  it("menghasilkan Blob baru saat encoding berhasil", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const result = await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: createDefaultTemplate(),
+      canvasFactory: () => canvas,
+    });
+
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.blob).toBeInstanceOf(Blob);
+    }
+    expect(ctx.drawImage).toHaveBeenCalled();
+    expect(ctx.fillText).toHaveBeenCalled();
+  });
+
+  it("mengembalikan error eksplisit saat toBlob gagal (bukan throw)", async () => {
+    const { canvas } = createFakeCanvas(true);
+    const result = await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: createDefaultTemplate(),
+      canvasFactory: () => canvas,
+    });
+
+    expect(result.status).toBe("error");
+  });
+
+  it("mengembalikan error saat getContext mengembalikan null", async () => {
+    const canvas: CanvasLike = {
+      width: 0,
+      height: 0,
+      getContext: () => null,
+      toBlob: vi.fn(),
+    };
+    const result = await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: createDefaultTemplate(),
+      canvasFactory: () => canvas,
+    });
+
+    expect(result.status).toBe("error");
+  });
+
+  it("tidak memodifikasi objek sourceImage yang diberikan (foto asli tidak di-overwrite)", async () => {
+    const { canvas } = createFakeCanvas();
+    const sourceImage = { marker: "original" };
+    const sourceSnapshot = { ...sourceImage };
+
+    await renderWatermark({
+      sourceImage,
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: createDefaultTemplate(),
+      canvasFactory: () => canvas,
+    });
+
+    expect(sourceImage).toEqual(sourceSnapshot);
+  });
+});
