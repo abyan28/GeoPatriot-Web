@@ -54,3 +54,14 @@ export async function deleteSession(id: string): Promise<StorageResult<void>> {
     return toStorageError(error);
   }
 }
+
+/** Menghapus seluruh session dari IndexedDB (dipakai saat reset data, Phase 13). */
+export async function clearAllSessions(): Promise<StorageResult<void>> {
+  try {
+    const db = await getDb();
+    await db.clear("sessions");
+    return { status: "success", data: undefined };
+  } catch (error) {
+    return toStorageError(error);
+  }
+}

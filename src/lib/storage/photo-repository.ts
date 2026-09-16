@@ -83,3 +83,35 @@ export async function deletePhotosBySession(sessionId: string): Promise<StorageR
     return toStorageError(error);
   }
 }
+
+/** Menghapus seluruh foto yang sudah diunduh (downloaded = true) untuk menghemat ruang (PRD #14, #15). */
+export async function deleteDownloadedPhotos(): Promise<StorageResult<number>> {
+  try {
+    const db = await getDb();
+    const tx = db.transaction("photos", "readwrite");
+    let cursor = await tx.store.openCursor();
+    let count = 0;
+    while (cursor) {
+      if (cursor.value.downloaded) {
+        await cursor.delete();
+        count++;
+      }
+      cursor = await cursor.continue();
+    }
+    await tx.done;
+    return { status: "success", data: count };
+  } catch (error) {
+    return toStorageError(error);
+  }
+}
+
+/** Menghapus seluruh data foto dari IndexedDB (dipakai saat reset data aplikasi, Phase 13). */
+export async function clearAllPhotos(): Promise<StorageResult<void>> {
+  try {
+    const db = await getDb();
+    await db.clear("photos");
+    return { status: "success", data: undefined };
+  } catch (error) {
+    return toStorageError(error);
+  }
+}

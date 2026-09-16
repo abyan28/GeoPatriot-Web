@@ -9,9 +9,9 @@ import { useCapturePipeline } from "./use-capture-pipeline";
 import { SessionGalleryDrawer } from "@/features/sessions";
 import { useGeolocation } from "@/features/location";
 import { useMetadataConfig, MetadataEditorSheet, getLocalTimezone } from "@/features/metadata";
-import { useWatermarkSettings } from "@/features/watermark";
+import { useAppSettings, SettingsSheet } from "@/features/settings";
 import { StatusChip, GpsQualityChip } from "@/components/ui/StatusChip";
-import { EditIcon, MapPinIcon, ClockIcon, SlidersIcon } from "@/components/icons";
+import { EditIcon, MapPinIcon, ClockIcon, SlidersIcon, SettingsIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -55,7 +55,8 @@ export function CameraScreen() {
     resetToDefaults,
   } = useMetadataConfig();
 
-  const { settings: watermarkSettings } = useWatermarkSettings();
+  const appSettings = useAppSettings();
+  const { watermarkSettings } = appSettings;
 
   const {
     capturePhoto,
@@ -81,6 +82,7 @@ export function CameraScreen() {
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [liveClock, setLiveClock] = useState<string>("");
 
   // Live timer untuk update jam di preview watermark HUD
@@ -167,8 +169,8 @@ export function CameraScreen() {
           </div>
         </div>
 
-        {/* GPS / Manual Status Chip: Menampilkan kualitas atau mode manual */}
-        <div className="pointer-events-auto">
+        {/* GPS / Manual Status Chip & Tombol Pengaturan Cepat (Phase 13) */}
+        <div className="pointer-events-auto flex items-center gap-2">
           {locationMode === "manual" ? (
             <StatusChip
               label="Mode Manual"
@@ -220,6 +222,16 @@ export function CameraScreen() {
               className="cursor-pointer active:scale-95 transition-transform"
             />
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            aria-label="Buka Pengaturan Aplikasi"
+            title="Pengaturan Aplikasi"
+            className="w-8 h-8 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f]"
+          >
+            <SettingsIcon size={16} className="text-[#dcab55]" />
+          </button>
         </div>
       </header>
 
@@ -356,6 +368,19 @@ export function CameraScreen() {
         onPhotoDeleted={() => {
           void reloadSessionPhotos();
         }}
+      />
+
+      {/* Drawer Pengaturan Aplikasi & Penyimpanan (Phase 13) */}
+      <SettingsSheet
+        isOpen={isSettingsOpen}
+        onClose={() => {
+          setIsSettingsOpen(false);
+          void reloadSessionPhotos();
+        }}
+        onSettingsChanged={() => {
+          void reloadSessionPhotos();
+        }}
+        settingsHook={appSettings}
       />
     </div>
   );

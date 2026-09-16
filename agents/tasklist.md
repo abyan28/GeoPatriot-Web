@@ -1,6 +1,6 @@
 # Tasklist - GeoPatriot Web
 
-Progress: 72%
+Progress: 95%
 
 Catatan: Layer non-UI (Phase 0, types, lib) dikerjakan oleh Claude Code.
 Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
@@ -105,6 +105,16 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
   - Diperbarui: `src/features/camera/camera-permission-fallback.tsx` (Panduan edukatif solusi akses via HTTPS di HP)
 - [✓] ✅ Task 2.3 - Konfigurasi allowedDevOrigins di next.config.ts `[Mudah]` (Selesai)
   - Diperbarui: `next.config.ts` (Menambahkan `allowedDevOrigins` yang mengizinkan `192.168.100.10` dan auto-detect IPv4 dari `os.networkInterfaces()` agar chunk JS dan websocket HMR tidak terblokir cross-origin di HP)
+- [✓] ✅ Task 2.4 - Native Camera Zoom & Multi-Modal Control (Pinch & Presets) `[Sedang]` (Selesai)
+  - Dibuat/Diperbarui: `src/lib/browser/camera.ts` (Interface `ZoomCapabilities`, fungsi `getCameraZoomCapabilities`, `getCameraCurrentZoom`, `applyCameraZoom` berbasis W3C advanced constraints, dan generator adaptif `calculateZoomPresets`)
+  - Dibuat/Diperbarui: `src/lib/browser/camera.test.ts` (5 unit tests untuk deteksi kapabilitas zoom, pembacaan tingkat zoom, kalkulasi preset, dan aplikasi zoom constraint)
+  - Diperbarui: `src/features/camera/use-camera.ts` (Auto-sync `zoomCapabilities`, auto-clamping batas min-max & step rounding, penanganan graceful fallback ke 1× saat switch camera)
+  - Diperbarui: `src/features/camera/camera-viewport.tsx` (Pencegahan page zoom via `touch-none`, deteksi gestur dua jari pinch-to-zoom dengan perhitungan jarak sentuh proporsional)
+  - Diperbarui: `src/features/camera/camera-controls.tsx` (Bilah pill preset zoom adaptif di Thumb Zone atas tombol shutter: 1×, 2×, dsb. beserta live bubble indicator)
+  - Diperbarui: `src/types/metadata.ts` (Properti `zoom?: number` pada `MetadataSnapshot`)
+  - Diperbarui: `src/features/metadata/use-metadata-config.ts` (Menyimpan tingkat zoom aktif pada `MetadataSnapshot` yang dibekukan saat shutter ditekan)
+  - Diperbarui: `src/features/metadata/metadata-config.test.ts` (Unit test pembekuan nilai zoom pada snapshot)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Wiring interaksi zoom dari hook `useCamera` ke viewport, controls, dan capture pipeline)
 
 ## Phase 3 - Geolocation Integration
 
@@ -149,7 +159,7 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
 - [✓] ✅ Task V.1 - Smoke test end-to-end lintas layer (session -> photo -> watermark -> zip) `[Sedang]` (Selesai)
   - File dibuat: `src/lib/integration.smoke.test.ts`
 - [✓] ✅ Task V.2 - `pnpm typecheck`, `pnpm lint`, `pnpm test` seluruhnya lulus `[Mudah]` (Selesai)
-  - 51/51 unit test lulus (16 test suites), 0 error TypeScript, 0 error ESLint
+  - 65/65 unit test lulus (18 test suites), 0 error TypeScript, 0 error ESLint
 - [✓] ✅ Task V.3 - `pnpm build` lulus tanpa error Turbopack Next.js 16 `[Mudah]` (Selesai)
 
 ## Phase 9 & 10 - Multi-Photo Session & Session Gallery Drawer
@@ -166,22 +176,55 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
   - Diperbarui: `src/features/camera/photo-preview-dialog.tsx` (Menambahkan callback `onDownload` dan `onDelete` untuk pratinjau resolusi penuh langsung dari galeri)
   - Diperbarui: `src/features/camera/camera-screen.tsx` (Wiring tombol galeri thumb-zone langsung ke `SessionGalleryDrawer` dengan auto-sync data sesi dan foto kamera)
 
+## Phase 11 - Download Engine & Progress UI
+
+- [✓] ✅ Task 11.1 - Single & Batch ZIP Download Trigger & Progress UI `[Sedang]` (Selesai)
+  - Dibuat: `src/features/downloads/use-download-manager.ts` (State manager progres unduhan dengan tahapan `idle`, `preparing`, `compressing`, `downloading`, `completed`, `error`, fungsi murni `executeSingleDownload` & `executeBatchZipDownload`, dan generator entri ZIP terurut `prepareZipEntries`)
+  - Dibuat: `src/features/downloads/download-progress-dialog.tsx` (Dialog visual progres unduhan mobile-first dengan live progress bar 0-100%, estimasi ukuran berkas ZIP, status foto, animasi ikon tahapan, tombol tutup/selesai, serta jaminan keamanan data Rules #10.5)
+  - Dibuat: `src/features/downloads/use-download-manager.test.ts` (Unit test operasi single download, batch ZIP compression, pelacakan callback progres, dan penanganan kegagalan aman)
+  - Dibuat: `src/features/downloads/index.ts` (Barrel export fitur downloads)
+  - Diperbarui: `src/lib/downloads/zip-download.ts` (Menambahkan `ZipProgressCallback` dan pelacakan progres pembacaan buffer & kompresi)
+  - Diperbarui: `src/lib/downloads/zip-download.test.ts` (Pengujian callback progres pada pembuatan ZIP)
+  - Diperbarui: `src/features/sessions/use-session-gallery.ts` (Mendelegasikan unduhan ke `executeSingleDownload` dan `executeBatchZipDownload` serta mengekspos `reloadPhotos`)
+  - Diperbarui: `src/features/sessions/session-gallery-drawer.tsx` (Integrasi `useDownloadManager` dan rendering `DownloadProgressDialog` saat tombol unduh ZIP ditekan)
+  - Diperbarui: `src/features/camera/photo-preview-dialog.tsx` (Menggunakan `executeSingleDownload` agar unduhan mandiri otomatis memperbarui status `downloaded = true` di IndexedDB)
+
+## Phase 12 - PWA Manifest & Service Worker
+
+- [✓] ✅ Task 12.1 - PWA Manifest & Service Worker `[Sedang]` (Selesai)
+  - Dibuat: `src/app/manifest.ts` (Web App Manifest Next.js App Router dengan nama "GeoPatriot Web — GPS Camera", mode standalone, tema Deep Navy `#08111d`, orientasi portrait, dan ikon 192x192 & 512x512 maskable/any)
+  - Dibuat: `public/sw.js` (Service Worker client-side: precache app shell `/`, `/manifest.webmanifest`, `/app-icon.png`, strategi Stale-While-Revalidate untuk asset statis, Network-First dengan cache fallback untuk dokumen navigasi saat offline di lapangan, pembersihan cache lama saat aktivasi, dan isolasi ketat yang melarang cache data lokasi/API pihak ketiga sesuai Rules #14.3)
+  - Dibuat: `src/features/pwa/use-pwa.ts` (Hook status online/offline, deteksi display mode standalone, registrasi otomatis service worker di production, dan event listener `beforeinstallprompt`)
+  - Dibuat: `src/features/pwa/pwa-banner.tsx` (Banner visual adaptif: indikator "Mode Offline Lapangan" saat koneksi internet terputus dan tombol ajakan "Pasang Aplikasi" jika didukung peramban)
+  - Dibuat: `src/features/pwa/index.ts` (Barrel export fitur PWA)
+  - Dibuat: `src/features/pwa/pwa.test.ts` (Unit test konfigurasi manifest dan verifikasi perlindungan privasi cache lokasi Rules #14.3)
+  - Diperbarui: `src/app/layout.tsx` (Metadata `appleWebApp` untuk iOS Safari PWA dan pemasangan `PwaBanner` di root layout)
+
+## Phase 13 - Settings Sheet & Storage Indicator
+
+- [✓] ✅ Task 13.1 - Settings Sheet & Storage Indicator `[Sedang]` (Selesai)
+  - Dibuat: `src/lib/storage/photo-repository.ts` (`deleteDownloadedPhotos` & `clearAllPhotos` untuk pembersihan aman Rules #10.5)
+  - Dibuat: `src/lib/storage/session-repository.ts` (`clearAllSessions` untuk pembersihan basis data sesi)
+  - Dibuat: `src/lib/storage/settings-repository.ts` (`clearAllSettings` untuk reset preferensi lokal)
+  - Dibuat: `src/features/settings/use-app-settings.ts` (Hook pusat pengaturan aplikasi: persistensi watermark settings, preferensi GPS/location provider, dan live storage meter via `navigator.storage.estimate()`)
+  - Dibuat: `src/features/settings/settings-sheet.tsx` (Drawer BottomSheet 3 tab interaktif: "Watermark" [template, posisi, opacity slider, field toggles, custom note], "Lokasi & GPS" [provider switcher, high accuracy toggle, auto manual fallback], dan "Penyimpanan" [visual storage bar, counter foto terunduh, tombol pembersihan foto terunduh, dan modal konfirmasi hapus semua data])
+  - Dibuat: `src/features/settings/index.ts` (Barrel export fitur settings)
+  - Dibuat: `src/features/settings/settings.test.ts` (Unit test pembersihan foto terunduh, reset seluruh store IDB, dan inisialisasi default settings)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Integrasi tombol SettingsIcon di top header, sinkronisasi live watermark HUD & capture pipeline dengan `useAppSettings`, dan rendering `SettingsSheet`)
+
 ## Belum Dikerjakan (Next Steps)
 
-- [ ] Task 11.1 - Phase 11: Single & Batch ZIP Download Trigger & Progress UI (`src/features/downloads/`)
-- [ ] Task 12.1 - Phase 12: PWA Manifest & Service Worker
-- [ ] Task 13.1 - Phase 13: Settings Sheet & Storage Indicator
+- [ ] Task 14.1 - Phase 14: Error/Permission UX & Auditing Edge Cases
 
 ## Ringkasan Checkpoint Saat Ini
 
-Phase 9 (Multi-photo Session Management) dan Phase 10 (Session Gallery Drawer) telah selesai 100%.
+Phase 13 (Settings Sheet & Storage Indicator) telah selesai 100%.
 Pengguna kini dapat:
-1. Mengambil multi-foto dalam satu sesi atau berpindah antar sesi lapangan.
-2. Membuka galeri sesi dari tombol thumbnail pojok kiri bawah kamera.
-3. Melihat seluruh foto dalam kisi 2-3 kolom dengan badge status unduhan ("Diunduh" vs "Belum Diunduh").
-4. Memilih beberapa foto sekaligus (multi-select) atau seluruh foto ("Pilih Semua").
-5. Mengunduh foto terpilih atau seluruh sesi dalam satu berkas ZIP instan berbasis client-side (`fflate`).
-6. Membuka pratinjau foto resolusi tinggi ber-watermark untuk diunduh mandiri atau dihapus.
-7. Menghapus foto tertentu atau mengosongkan seluruh sesi dengan dialog konfirmasi aman (Rules #8.7, #8.8).
-Seluruh 51 unit test lulus (16 test suites), 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
+1. Membuka drawer pengaturan GeoPatriot langsung dari tombol gear di top bar header kamera.
+2. Mengonfigurasi preferensi Watermark secara visual (pilihan template Default/Ringkas/Detail, posisi Atas/Bawah, slider transparansi latar, toggle visibilitas 8 komponen watermark, dan teks instansi/catatan kustom) dengan efek instan pada viewfinder HUD dan foto yang ditangkap.
+3. Mengatur preferensi Lokasi & GPS (pilihan penyedia geocoding LocationIQ vs Offline Fallback, opsi GPS High Accuracy, dan auto-fallback ke mode manual saat sinyal hilang).
+4. Memantau kapasitas memori browser secara live dengan progress bar persentase kuota (`navigator.storage.estimate()`), penghitung total foto, total sesi, dan foto yang telah diunduh.
+5. Menjalankan fitur pembersihan aman "Bersihkan Foto yang Sudah Diunduh" (Rules #10.5 & PRD #14) yang menghapus foto dengan flag `downloaded: true` tanpa menghilangkan foto yang belum diunduh.
+6. Menjalankan "Hapus Semua Data Lokal" dengan dialog konfirmasi modal berkunci aman.
+Seluruh 69 unit test lulus (19 test suites), 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
 

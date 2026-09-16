@@ -42,3 +42,14 @@ export async function deleteSetting(key: string): Promise<StorageResult<void>> {
     return toStorageError(error);
   }
 }
+
+/** Menghapus seluruh pengaturan dari IndexedDB (dipakai saat reset data aplikasi, Phase 13). */
+export async function clearAllSettings(): Promise<StorageResult<void>> {
+  try {
+    const db = await getDb();
+    await db.clear("settings");
+    return { status: "success", data: undefined };
+  } catch (error) {
+    return toStorageError(error);
+  }
+}
