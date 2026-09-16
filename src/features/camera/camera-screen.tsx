@@ -24,6 +24,10 @@ export function CameraScreen() {
     facingMode,
     errorMessage: cameraError,
     videoRef,
+    zoom,
+    zoomCapabilities,
+    zoomPresets,
+    setZoom,
     start,
     toggleFacingMode,
   } = useCamera();
@@ -69,6 +73,7 @@ export function CameraScreen() {
         gpsCoordinate: geoCoord,
         gpsQuality: geoQuality,
         gpsAddressInfo: geoAddress,
+        zoom,
       }),
   });
 
@@ -227,6 +232,9 @@ export function CameraScreen() {
           errorMessage={cameraError}
           isFlashing={isFlashing}
           onRequestCamera={() => start()}
+          zoom={zoom}
+          zoomCapabilities={zoomCapabilities}
+          onZoomChange={setZoom}
         >
           {/* Watermark Live HUD Overlay (Interaktif & Real-time) */}
           <div className="absolute bottom-4 inset-x-3 pointer-events-auto">
@@ -302,6 +310,10 @@ export function CameraScreen() {
             onOpenGallery={handleOpenGallery}
             isCapturing={isCapturing}
             lastPhoto={lastPhoto}
+            zoom={zoom}
+            zoomCapabilities={zoomCapabilities}
+            zoomPresets={zoomPresets}
+            onZoomChange={setZoom}
           />
         </footer>
       )}

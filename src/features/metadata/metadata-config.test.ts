@@ -86,4 +86,27 @@ describe("buildMetadataSnapshot", () => {
     expect(snapshot.locationName).toBe(defaultManualLoc.locationName);
     expect(snapshot.gpsQuality).toBeUndefined();
   });
+
+  it("menyimpan tingkat zoom pada snapshot jika disediakan", () => {
+    const snapshot = buildMetadataSnapshot({
+      locationMode: "gps",
+      timeMode: "auto",
+      manualLocation: defaultManualLoc,
+      manualDateTime: "2026-09-16T10:00",
+      zoom: 2.5,
+    });
+
+    expect(snapshot.zoom).toBe(2.5);
+  });
+
+  it("membiarkan zoom bernilai undefined jika tidak diberikan", () => {
+    const snapshot = buildMetadataSnapshot({
+      locationMode: "gps",
+      timeMode: "auto",
+      manualLocation: defaultManualLoc,
+      manualDateTime: "2026-09-16T10:00",
+    });
+
+    expect(snapshot.zoom).toBeUndefined();
+  });
 });

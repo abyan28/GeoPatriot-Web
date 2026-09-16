@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   startCamera,
   stopCamera,
   switchCamera,
   isCameraSupported,
+  getCameraZoomCapabilities,
+  getCameraCurrentZoom,
+  applyCameraZoom,
+  calculateZoomPresets,
   type CameraStatus,
   type CameraFacingMode,
+  type ZoomCapabilities,
 } from "@/lib/browser/camera";
 
 export interface UseCameraResult {
@@ -16,6 +21,11 @@ export interface UseCameraResult {
   stream: MediaStream | null;
   errorMessage: string | null;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  zoom: number;
+  zoomCapabilities: ZoomCapabilities | null;
+  isZoomSupported: boolean;
+  zoomPresets: number[];
+  setZoom: (targetZoom: number) => Promise<boolean>;
   start: (mode?: CameraFacingMode) => Promise<void>;
   stop: () => void;
   toggleFacingMode: () => Promise<void>;
@@ -30,8 +40,56 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
   const [facingMode, setFacingMode] = useState<CameraFacingMode>(initialFacingMode);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [zoom, setZoomState] = useState<number>(1);
+  const [zoomCapabilities, setZoomCapabilities] = useState<ZoomCapabilities | null>(null);
+  const [zoomPresets, setZoomPresets] = useState<number[]>([]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  /**
+   * Menyelaraskan kapabilitas dan nilai zoom saat stream kamera berubah (rules #3.8).
+   */
+  const syncZoomCapabilities = useCallback((activeStream: MediaStream | null) => {
+    if (!activeStream) {
+      setZoomCapabilities(null);
+      setZoomPresets([]);
+      setZoomState(1);
+      return;
+    }
+
+    const caps = getCameraZoomCapabilities(activeStream);
+    setZoomCapabilities(caps);
+    if (caps) {
+      const presets = calculateZoomPresets(caps);
+      setZoomPresets(presets);
+      const current = getCameraCurrentZoom(activeStream);
+      setZoomState(current);
+    } else {
+      setZoomPresets([]);
+      setZoomState(1);
+    }
+  }, []);
+
+  /**
+   * Menerapkan tingkat zoom kamera native melalui MediaTrackConstraints (rules #3.7).
+   */
+  const setZoom = useCallback(
+    async (targetZoom: number): Promise<boolean> => {
+      if (!stream || !zoomCapabilities) return false;
+
+      // Batasi dalam rentang min dan max
+      const clamped = Math.min(Math.max(targetZoom, zoomCapabilities.min), zoomCapabilities.max);
+      const step = zoomCapabilities.step || 0.1;
+      const rounded = Number((Math.round(clamped / step) * step).toFixed(2));
+
+      const success = await applyCameraZoom(stream, rounded);
+      if (success) {
+        setZoomState(rounded);
+      }
+      return success;
+    },
+    [stream, zoomCapabilities],
+  );
 
   /**
    * Menghubungkan MediaStream aktif ke elemen video HTML.
@@ -76,11 +134,13 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
         setStream(result.stream);
         setFacingMode(targetMode);
         attachStreamToVideo(result.stream);
+        syncZoomCapabilities(result.stream);
       } else {
+        syncZoomCapabilities(null);
         setErrorMessage(result.errorMessage ?? "Gagal mengaktifkan kamera.");
       }
     },
-    [facingMode, stream, attachStreamToVideo],
+    [facingMode, stream, attachStreamToVideo, syncZoomCapabilities],
   );
 
   /**
@@ -92,8 +152,9 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
       setStream(null);
     }
     attachStreamToVideo(null);
+    syncZoomCapabilities(null);
     setStatus("idle");
-  }, [stream, attachStreamToVideo]);
+  }, [stream, attachStreamToVideo, syncZoomCapabilities]);
 
   /**
    * Berpindah arah kamera (depan <-> belakang).
@@ -114,10 +175,12 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
       setStream(result.stream);
       setFacingMode(nextMode);
       attachStreamToVideo(result.stream);
+      syncZoomCapabilities(result.stream);
     } else {
+      syncZoomCapabilities(null);
       setErrorMessage(result.errorMessage ?? "Gagal beralih kamera.");
     }
-  }, [facingMode, stream, start, attachStreamToVideo]);
+  }, [facingMode, stream, start, attachStreamToVideo, syncZoomCapabilities]);
 
   // Cleanup otomatis saat unmount agar stream kamera dimatikan
   useEffect(() => {
@@ -128,12 +191,19 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
     };
   }, [stream]);
 
+  const isZoomSupported = useMemo(() => Boolean(zoomCapabilities), [zoomCapabilities]);
+
   return {
     status,
     facingMode,
     stream,
     errorMessage,
     videoRef,
+    zoom,
+    zoomCapabilities,
+    isZoomSupported,
+    zoomPresets,
+    setZoom,
     start,
     stop,
     toggleFacingMode,

@@ -31,6 +31,7 @@ export interface UseMetadataConfigReturn extends MetadataConfigState {
     gpsCoordinate?: GeoCoordinate | null;
     gpsQuality?: GpsQuality | null;
     gpsAddressInfo?: { locationName?: string; address?: string } | null;
+    zoom?: number;
   }) => MetadataSnapshot;
   resetToDefaults: () => void;
 }
@@ -81,6 +82,8 @@ export interface BuildMetadataSnapshotParams {
   gpsCoordinate?: GeoCoordinate | null;
   gpsQuality?: GpsQuality | null;
   gpsAddressInfo?: { locationName?: string; address?: string } | null;
+  /** Tingkat zoom aktif saat pengambilan foto (rules #5.5 & #15.9). */
+  zoom?: number;
 }
 
 /**
@@ -96,6 +99,7 @@ export function buildMetadataSnapshot({
   gpsCoordinate,
   gpsQuality,
   gpsAddressInfo,
+  zoom,
 }: BuildMetadataSnapshotParams): MetadataSnapshot {
   const timezone = getLocalTimezone();
 
@@ -145,6 +149,7 @@ export function buildMetadataSnapshot({
       time: timeMode,
     },
     customText: customNote?.trim() ? customNote.trim() : undefined,
+    zoom: zoom !== undefined && zoom > 0 ? Number(zoom.toFixed(2)) : undefined,
   };
 }
 
@@ -208,10 +213,12 @@ export function useMetadataConfig(): UseMetadataConfigReturn {
       gpsCoordinate,
       gpsQuality,
       gpsAddressInfo,
+      zoom,
     }: {
       gpsCoordinate?: GeoCoordinate | null;
       gpsQuality?: GpsQuality | null;
       gpsAddressInfo?: { locationName?: string; address?: string } | null;
+      zoom?: number;
     }): MetadataSnapshot => {
       return buildMetadataSnapshot({
         locationMode,
@@ -222,6 +229,7 @@ export function useMetadataConfig(): UseMetadataConfigReturn {
         gpsCoordinate,
         gpsQuality,
         gpsAddressInfo,
+        zoom,
       });
     },
     [locationMode, timeMode, manualLocation, manualDateTime, customNote],

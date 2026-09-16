@@ -31,4 +31,7 @@ export interface MetadataSnapshot {
   timezone: string;
   metadataSource: MetadataSource;
   customText?: string;
+  /** Tingkat camera zoom aktif saat foto diambil (misal 1, 2, 2.5). */
+  zoom?: number;
 }
+

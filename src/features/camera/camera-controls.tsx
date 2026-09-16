@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FlipCameraIcon, ImagesIcon } from "@/components/icons";
 import { Button } from "@/components/ui/Button";
 import type { Photo } from "@/types/session";
+import type { ZoomCapabilities } from "@/lib/browser/camera";
 
 export interface CameraControlsProps {
   onCapture: () => void;
@@ -12,6 +13,10 @@ export interface CameraControlsProps {
   disabled?: boolean;
   thumbnailUrl?: string | null;
   lastPhoto?: Photo | null;
+  zoom?: number;
+  zoomCapabilities?: ZoomCapabilities | null;
+  zoomPresets?: number[];
+  onZoomChange?: (zoom: number) => void;
 }
 
 /**
@@ -52,9 +57,47 @@ export function CameraControls({
   disabled = false,
   thumbnailUrl,
   lastPhoto,
+  zoom = 1,
+  zoomCapabilities,
+  zoomPresets = [],
+  onZoomChange,
 }: CameraControlsProps) {
   return (
-    <div className="w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-6 pb-8 px-6 flex items-center justify-between z-30 select-none">
+    <div className="w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-3 pb-8 px-6 flex flex-col z-30 select-none">
+      {/* Baris Kontrol Zoom Adaptif (Thumb Zone, Rules #3.11) */}
+      {zoomCapabilities && zoomPresets.length > 1 && onZoomChange && (
+        <div className="flex items-center justify-center pb-3">
+          <div className="flex items-center gap-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 shadow-xl">
+            {zoomPresets.map((level) => {
+              const isSelected = Math.abs(zoom - level) < 0.1;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => onZoomChange(level)}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs transition-all ${
+                    isSelected
+                      ? "bg-[#c5984f] text-[#08111d] font-black shadow-md scale-105"
+                      : "text-zinc-300 hover:text-white hover:bg-white/10 font-semibold"
+                  }`}
+                  aria-label={`Atur zoom ke ${level}x`}
+                >
+                  {level}×
+                </button>
+              );
+            })}
+            {/* Tampilkan indikator custom bila zoom saat ini tidak tepat di salah satu preset (misal hasil pinch 1.7x) */}
+            {!zoomPresets.some((level) => Math.abs(zoom - level) < 0.1) && (
+              <span className="px-2.5 py-1 rounded-full bg-[#c5984f] text-[#08111d] text-xs font-black shadow-md">
+                {zoom.toFixed(1)}×
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Baris Utama: Galeri, Shutter, dan Flip Kamera */}
+      <div className="flex items-center justify-between w-full">
       {/* Sisi Kiri: Tombol Buka Galeri Sesi */}
       <div className="flex-1 flex justify-start">
         <button
@@ -110,6 +153,7 @@ export function CameraControls({
           <FlipCameraIcon size={22} className="text-zinc-300" />
         </Button>
       </div>
+    </div>
     </div>
   );
 }
