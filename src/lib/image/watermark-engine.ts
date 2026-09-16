@@ -173,9 +173,9 @@ function drawWatermarkPanel(
   );
   if (lines.length === 0 && !hasMap && !hasBranding) return;
 
-  // Skala proporsional berbasis resolusi canvas terhadap standar portrait 1080px
+  // Skala proporsional berbasis resolusi canvas terhadap standar portrait 1080px (~1.5x pembesaran sesuai preferensi sertifikasi lapangan)
   const baseDimension = Math.min(canvasWidth, canvasHeight);
-  const scale = Math.max(0.65, Math.min(2.5, baseDimension / 1080));
+  const scale = Math.max(0.9, Math.min(3.5, (baseDimension / 1080) * 1.5));
   const fontSize = Math.round(settings.fontSizePx * scale);
   const margin = Math.round(settings.marginPx * scale);
   const spacing = Math.round(settings.spacingPx * scale);
@@ -190,12 +190,12 @@ function drawWatermarkPanel(
   const attributionText = hasMap ? data.providerAttribution ?? "© LocationIQ" : "";
 
   // Lebar maksimal panel dibatasi agar TIDAK melebar penuh (tidak full-width):
-  // - Portrait: maks 85% lebar canvas atau (canvasWidth - 2 * margin)
-  // - Landscape: maks 55% lebar canvas (~45-55% selaras foto referensi mobile)
+  // - Portrait: maks 92% lebar canvas atau (canvasWidth - 2 * margin)
+  // - Landscape: maks 65% lebar canvas (~55-65% selaras foto referensi mobile)
   const isLandscape = canvasWidth > canvasHeight;
   const maxPanelWidth = isLandscape
-    ? Math.min(canvasWidth - margin * 2, Math.round(canvasWidth * 0.55))
-    : Math.min(canvasWidth - margin * 2, Math.round(canvasWidth * 0.85));
+    ? Math.min(canvasWidth - margin * 2, Math.round(canvasWidth * 0.65))
+    : Math.min(canvasWidth - margin * 2, Math.round(canvasWidth * 0.92));
   const maxTextWidth = Math.max(60, maxPanelWidth - 2 * innerPadding - thumbnailReservedWidth);
 
   // Ukur lebar aktual teks untuk menentukan content-based panel width

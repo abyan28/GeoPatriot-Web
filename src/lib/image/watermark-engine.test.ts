@@ -340,7 +340,7 @@ describe("renderWatermark", () => {
 
     const callsBottom = (ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls;
     const [blX, blY] = callsBottom[0] as [number, number, number, number];
-    expect(blX).toBe(16); // margin
+    expect(blX).toBe(24); // margin (16 * 1.5 scale)
     expect(blY).toBeGreaterThan(1000); // bottom
 
     const { canvas: canvasTop, ctx: ctxTop } = createFakeCanvas();
@@ -355,8 +355,8 @@ describe("renderWatermark", () => {
 
     const callsTop = (ctxTop.fillRect as ReturnType<typeof vi.fn>).mock.calls;
     const [tlX, tlY] = callsTop[0] as [number, number, number, number];
-    expect(tlX).toBe(16); // margin
-    expect(tlY).toBe(16); // top
+    expect(tlX).toBe(24); // margin (16 * 1.5 scale)
+    expect(tlY).toBe(24); // top
   });
 
   it("memposisikan panel di tengah horizontal foto saat posisi bottom atau top", async () => {

@@ -6,7 +6,7 @@ import { useCamera } from "./use-camera";
 import { getCameraCurrentZoom } from "@/lib/browser/camera";
 import { useFullscreen } from "./use-fullscreen";
 import { CameraViewport } from "./camera-viewport";
-import { CameraControls } from "./camera-controls";
+import { CameraControls, ZoomControlsPill } from "./camera-controls";
 import { useCapturePipeline } from "./use-capture-pipeline";
 import { SessionGalleryDrawer } from "@/features/sessions";
 import { useGeolocation } from "@/features/location";
@@ -270,7 +270,11 @@ export function CameraScreen() {
       }`}
     >
       {/* Top Header Bar: Branding & GPS Status Chip (Clickable) */}
-      <header className="absolute top-0 inset-x-0 z-30 pt-[max(1rem,env(safe-area-inset-top))] pb-3 px-3 sm:px-4 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none">
+      <header
+        className={`absolute top-0 left-0 z-30 pt-[max(1rem,env(safe-area-inset-top))] pb-3 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none ${
+          isLandscape ? "right-24 pr-2 pl-3 sm:pl-4" : "right-0 px-3 sm:px-4"
+        }`}
+      >
         {/* Branding Logo: Ketuk untuk membuka Diagnostik Kesehatan Sistem (Phase 14) */}
         <button
           type="button"
@@ -431,7 +435,7 @@ export function CameraScreen() {
                     ? "auto"
                     : isLandscape
                     ? "1.25rem"
-                    : Math.max(footerHeight + 14, 120),
+                    : Math.max(footerHeight + 10, 84),
                 top:
                   hudPosition === "top"
                     ? "max(4.5rem, env(safe-area-inset-top) + 3.5rem)"
@@ -460,14 +464,14 @@ export function CameraScreen() {
                     ? "auto"
                     : isLandscape
                     ? "1.25rem"
-                    : Math.max(footerHeight + 14, 120),
+                    : Math.max(footerHeight + 10, 84),
                 top:
                   hudPosition === "top"
                     ? "max(4.5rem, env(safe-area-inset-top) + 3.5rem)"
                     : "auto",
                 maxWidth: isLandscape
                   ? "min(50vw, 380px)"
-                  : "min(calc(100vw - 2rem), 340px)",
+                  : "min(calc(100vw - 6rem), 310px)",
               }}
             >
               {/* Lencana Brand GeoPatriot menempel di pojok kanan-atas card */}
@@ -653,6 +657,18 @@ export function CameraScreen() {
             />
           </footer>
         )
+      )}
+
+      {/* Kolom Preset Zoom Vertikal Sisi Kanan (Mode Portrait) */}
+      {!isLandscape && cameraStatus === "ready" && zoomCapabilities && zoomPresets.length > 1 && (
+        <ZoomControlsPill
+          zoom={zoom}
+          zoomCapabilities={zoomCapabilities}
+          zoomPresets={zoomPresets}
+          onZoomChange={setZoom}
+          orientation="vertical"
+          className="absolute right-3.5 bottom-24 sm:bottom-28 z-25 pointer-events-auto"
+        />
       )}
 
       {/* Drawer Editor Metadata & Lokasi (Phase 4) */}
