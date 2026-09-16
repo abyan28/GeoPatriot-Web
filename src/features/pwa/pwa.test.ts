@@ -10,7 +10,8 @@ describe("PWA Specification & Safety Tests (Phase 12)", () => {
     expect(config.name).toBe("GeoPatriot Web — GPS Camera");
     expect(config.short_name).toBe("GeoPatriot");
     expect(config.display).toBe("standalone");
-    expect(config.orientation).toBe("portrait");
+    // "any" (bukan portrait-locked) agar landscape capture tidak diblokir PWA standalone.
+    expect(config.orientation).toBe("any");
     expect(config.start_url).toBe("/");
     expect(config.theme_color).toBe("#08111d");
     expect(config.background_color).toBe("#08111d");

@@ -37,6 +37,8 @@ export interface WatermarkVisualSettings {
   opacity: number;
   fontSizePx: number;
   mapThumbnailSizePx: number;
+  /** Level zoom static map thumbnail (12-19), diteruskan ke MapProvider.getStaticMap. */
+  mapZoom: number;
   marginPx: number;
   radiusPx: number;
   spacingPx: number;

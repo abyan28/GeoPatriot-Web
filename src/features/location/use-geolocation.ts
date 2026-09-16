@@ -27,10 +27,13 @@ export interface UseGeolocationOptions {
    * template watermark aktif tidak menampilkan map thumbnail (rules #12.6-12.7).
    */
   resolveMapThumbnail?: boolean;
+  /** Level zoom static map thumbnail (12-19), mengikuti WatermarkVisualSettings.mapZoom (default: 16). */
+  mapZoom?: number;
 }
 
-/** Ukuran & zoom static map thumbnail yang diminta ke MapProvider. */
-const MAP_THUMBNAIL_OPTIONS = { widthPx: 240, heightPx: 240, zoom: 16 };
+/** Ukuran static map thumbnail yang diminta ke MapProvider (zoom diatur via opsi hook). */
+const MAP_THUMBNAIL_SIZE = { widthPx: 240, heightPx: 240 };
+const DEFAULT_MAP_ZOOM = 16;
 
 export interface UseGeolocationReturn {
   status: GeolocationStatus;
@@ -59,6 +62,7 @@ export function useGeolocation({
   autoStart = true,
   resolveAddress = true,
   resolveMapThumbnail = false,
+  mapZoom = DEFAULT_MAP_ZOOM,
 }: UseGeolocationOptions = {}): UseGeolocationReturn {
   const [status, setStatus] = useState<GeolocationStatus>(() => {
     if (!isGeolocationSupported()) return "unsupported";
@@ -146,7 +150,10 @@ export function useGeolocation({
 
       try {
         const mapProvider = getMapProvider();
-        const result = await mapProvider.getStaticMap(lat, lon, MAP_THUMBNAIL_OPTIONS);
+        const result = await mapProvider.getStaticMap(lat, lon, {
+          ...MAP_THUMBNAIL_SIZE,
+          zoom: mapZoom,
+        });
 
         // Abaikan hasil basi bila sudah ada request map thumbnail yang lebih baru.
         if (requestId !== mapRequestIdRef.current) {
@@ -171,7 +178,7 @@ export function useGeolocation({
         // Fallback aman: kegagalan map thumbnail tidak boleh menggagalkan status lokasi
       }
     },
-    [resolveMapThumbnail],
+    [resolveMapThumbnail, mapZoom],
   );
 
   /**

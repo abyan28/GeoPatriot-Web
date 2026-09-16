@@ -10,12 +10,14 @@ export function createDetailTemplate(
   return {
     template: "detail",
     position: "bottom",
-    opacity: 0.8,
-    fontSizePx: 16,
-    mapThumbnailSizePx: 140,
-    marginPx: 20,
-    radiusPx: 14,
-    spacingPx: 8,
+    // Nilai diselaraskan dengan tuning GeoPatriot mobile (lihat catatan di default.ts).
+    opacity: 0.65,
+    fontSizePx: 22,
+    mapThumbnailSizePx: 160,
+    mapZoom: 17,
+    marginPx: 16,
+    radiusPx: 12,
+    spacingPx: 5,
     alignment: "left",
     visibleFields: {
       locationName: true,

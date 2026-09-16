@@ -19,6 +19,7 @@ import type {
 } from "@/types/location";
 import type { TimeMode } from "@/types/metadata";
 import { getLocalTimezone } from "./use-metadata-config";
+import { formatCoordinatePair, parseCoordinatePair } from "./parse-coordinate-pair";
 
 export interface MetadataEditorSheetProps {
   isOpen: boolean;
@@ -65,18 +66,44 @@ function MetadataEditorContent({
   const [draftManualLoc, setDraftManualLoc] = useState<ManualLocationInput>(manualLocation);
   const [draftDateTime, setDraftDateTime] = useState<string>(manualDateTime);
   const [draftNote, setDraftNote] = useState<string>(customNote);
+  // Field teks gabungan untuk koordinat, agar pengguna bisa paste langsung dari
+  // Google Maps (format "-9.620308,124.879609") tanpa harus memisah manual.
+  const [coordinateText, setCoordinateText] = useState<string>(
+    formatCoordinatePair(manualLocation.latitude, manualLocation.longitude),
+  );
+  const [coordinateError, setCoordinateError] = useState<string | null>(null);
+
+  /**
+   * Menangani perubahan pada field koordinat gabungan: parse, lalu update
+   * draftManualLoc bila valid. Nilai draft terakhir dipertahankan bila format
+   * belum lengkap/tidak valid, supaya user tetap bisa mengetik tanpa terputus.
+   */
+  const handleCoordinateTextChange = (value: string) => {
+    setCoordinateText(value);
+    const parsed = parseCoordinatePair(value);
+    if (parsed) {
+      setCoordinateError(null);
+      setDraftManualLoc((prev) => ({ ...prev, ...parsed }));
+    } else {
+      setCoordinateError("Format tidak dikenali. Gunakan: -9.620308,124.879609");
+    }
+  };
 
   /**
    * Mengisi form manual menggunakan pembacaan GPS saat ini.
    */
   const handleCopyFromGps = () => {
     if (gpsCoordinate) {
+      const latitude = Number(gpsCoordinate.latitude.toFixed(6));
+      const longitude = Number(gpsCoordinate.longitude.toFixed(6));
       setDraftManualLoc({
-        latitude: Number(gpsCoordinate.latitude.toFixed(6)),
-        longitude: Number(gpsCoordinate.longitude.toFixed(6)),
+        latitude,
+        longitude,
         locationName: gpsAddressInfo?.locationName || "Titik Koordinat Lapangan",
         address: gpsAddressInfo?.address || "",
       });
+      setCoordinateText(formatCoordinatePair(latitude, longitude));
+      setCoordinateError(null);
       setDraftLocationMode("manual");
     }
   };
@@ -219,39 +246,26 @@ function MetadataEditorContent({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] text-zinc-400 mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={draftManualLoc.latitude}
-                    onChange={(e) =>
-                      setDraftManualLoc((prev) => ({
-                        ...prev,
-                        latitude: parseFloat(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-full min-h-[40px] px-2.5 py-1.5 rounded-lg bg-[#0e2035] border border-[#2f6d8b]/40 text-white font-mono text-xs focus:border-[#c5984f] focus:outline-none"
-                    placeholder="-6.2088"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-zinc-400 mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={draftManualLoc.longitude}
-                    onChange={(e) =>
-                      setDraftManualLoc((prev) => ({
-                        ...prev,
-                        longitude: parseFloat(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-full min-h-[40px] px-2.5 py-1.5 rounded-lg bg-[#0e2035] border border-[#2f6d8b]/40 text-white font-mono text-xs focus:border-[#c5984f] focus:outline-none"
-                    placeholder="106.8456"
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] text-zinc-400 mb-1">
+                  Koordinat (Salin dari Google Maps)
+                </label>
+                <input
+                  type="text"
+                  inputMode="text"
+                  value={coordinateText}
+                  onChange={(e) => handleCoordinateTextChange(e.target.value)}
+                  aria-invalid={coordinateError !== null}
+                  className={`w-full min-h-[40px] px-2.5 py-1.5 rounded-lg bg-[#0e2035] border text-white font-mono text-xs focus:outline-none ${
+                    coordinateError
+                      ? "border-rose-500/60 focus:border-rose-500"
+                      : "border-[#2f6d8b]/40 focus:border-[#c5984f]"
+                  }`}
+                  placeholder="-9.620308, 124.879609"
+                />
+                {coordinateError && (
+                  <p className="text-[10px] text-rose-400 mt-1">{coordinateError}</p>
+                )}
               </div>
 
               <div>

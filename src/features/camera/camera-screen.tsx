@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useCamera } from "./use-camera";
 import { getCameraCurrentZoom } from "@/lib/browser/camera";
+import { useFullscreen } from "./use-fullscreen";
 import { CameraViewport } from "./camera-viewport";
 import { CameraControls } from "./camera-controls";
 import { useCapturePipeline } from "./use-capture-pipeline";
@@ -18,7 +19,15 @@ import {
   GpsFallbackAlert,
 } from "@/features/diagnostics";
 import { StatusChip, GpsQualityChip } from "@/components/ui/StatusChip";
-import { EditIcon, MapPinIcon, ClockIcon, SlidersIcon, SettingsIcon } from "@/components/icons";
+import {
+  EditIcon,
+  MapPinIcon,
+  ClockIcon,
+  SlidersIcon,
+  SettingsIcon,
+  MaximizeIcon,
+  MinimizeIcon,
+} from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -54,6 +63,7 @@ export function CameraScreen() {
     autoStart: true,
     resolveAddress: true,
     resolveMapThumbnail: watermarkSettings.visibleFields.mapThumbnail,
+    mapZoom: watermarkSettings.mapZoom,
   });
 
   const {
@@ -96,6 +106,12 @@ export function CameraScreen() {
   });
 
   const { showToast } = useToast();
+  // Root element target Fullscreen API — BERBEDA dari PWA standalone
+  // (src/features/pwa/use-pwa.ts): ini murni Web Fullscreen API yang dipicu
+  // tombol di dalam app, berlaku juga saat dibuka di tab browser biasa.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const { isFullscreen, isSupported: isFullscreenSupported, toggleFullscreen } =
+    useFullscreen(rootRef);
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
@@ -162,6 +178,17 @@ export function CameraScreen() {
     setIsGalleryOpen(true);
   };
 
+  /**
+   * Toggle Fullscreen API. Enhancement opsional — kegagalan/ketidaktersediaan
+   * tidak boleh mengganggu kamera/session, hanya ditampilkan sebagai toast ringan.
+   */
+  const handleToggleFullscreen = async () => {
+    const result = await toggleFullscreen();
+    if (result.status === "error") {
+      showToast("Layar penuh tidak tersedia di browser ini.", "info");
+    }
+  };
+
   // Koordinat & alamat aktif untuk ditampilkan pada Live HUD
   const activeLatitude =
     locationMode === "gps" && geoCoord ? geoCoord.latitude : manualLocation.latitude;
@@ -175,9 +202,16 @@ export function CameraScreen() {
   const activeTimeDisplay = timeMode === "auto" ? liveClock : manualDateTime.replace("T", " ");
 
   return (
-    <div className="relative w-full h-[100dvh] max-w-md mx-auto bg-[#08111d] flex flex-col justify-between overflow-hidden shadow-2xl">
+    <div
+      ref={rootRef}
+      className={`relative w-full h-[100dvh] bg-[#08111d] flex flex-col justify-between overflow-hidden shadow-2xl ${
+        isFullscreen ? "max-w-none" : "max-w-md mx-auto"
+      }`}
+    >
       {/* Top Header Bar: Branding & GPS Status Chip (Clickable) */}
-      <header className="absolute top-0 inset-x-0 z-30 pt-4 pb-3 px-4 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none">
+      {/* Padding atas mempertimbangkan safe-area (notch/Dynamic Island) — relevan
+          saat browser chrome hilang, baik via Fullscreen API maupun PWA standalone. */}
+      <header className="absolute top-0 inset-x-0 z-30 pt-[max(1rem,env(safe-area-inset-top))] pb-3 px-4 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none">
         {/* Branding Logo: Ketuk untuk membuka Diagnostik Kesehatan Sistem (Phase 14) */}
         <button
           type="button"
@@ -264,6 +298,22 @@ export function CameraScreen() {
               aria-label="GPS tidak tersedia. Ketuk untuk input manual."
               className="cursor-pointer active:scale-95 transition-transform"
             />
+          )}
+
+          {isFullscreenSupported && (
+            <button
+              type="button"
+              onClick={handleToggleFullscreen}
+              aria-label={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
+              title={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
+              className="w-11 h-11 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f]"
+            >
+              {isFullscreen ? (
+                <MinimizeIcon size={16} className="text-[#dcab55]" />
+              ) : (
+                <MaximizeIcon size={16} className="text-[#dcab55]" />
+              )}
+            </button>
           )}
 
           <button

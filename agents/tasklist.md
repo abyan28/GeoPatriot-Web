@@ -331,3 +331,120 @@ implementasi kode).
 - [ ] **Verifikasi CSP di browser nyata**: buka DevTools console setelah deploy, pastikan tidak ada CSP violation yang memblokir hydration/font/style Next.js, dan LocationIQ tetap bisa diakses.
 - [ ] Verifikasi HTTPS actual pada domain Vercel production setelah deploy.
 
+## Sesi Lanjutan: Fix Galeri, Watermark Alignment, Landscape, Input Koordinat, PWA/Fullscreen
+
+Progress: implementasi selesai untuk 5 item di bawah (A-E). Quality gate (typecheck/lint/
+test/build) lulus semua. **Belum di-commit** — menunggu instruksi eksplisit user.
+
+### A. Fix bug galeri foto tidak ter-load
+- [✓] ✅ Root cause: atribut `loading="lazy"` pada `<img>` thumbnail di
+  `src/features/sessions/session-gallery-drawer.tsx` — satu-satunya perbedaan dari pola
+  object-URL identik yang sudah bekerja di `camera-controls.tsx`. Dikombinasikan dengan 2
+  lapis scroll-container bersarang (`BottomSheet` + grid) + animasi masuk saat mount,
+  heuristik native lazy-loading browser salah menyimpulkan elemen di luar viewport.
+  * Diubah: `src/features/sessions/session-gallery-drawer.tsx` (hapus `loading="lazy"`)
+  * **NOT VERIFIED tanpa browser nyata**: perlu dicoba ulang oleh user untuk konfirmasi
+    thumbnail benar-benar tampil setelah fix.
+
+### B. Input koordinat manual digabung jadi satu field
+- [✓] ✅ Field lat/lng terpisah (`type="number"`) diganti satu input teks yang menerima
+  paste format Google Maps (`-9.620308,124.879609`, dengan/tanpa spasi, atau spasi saja).
+  * Dibuat: `src/features/metadata/parse-coordinate-pair.ts` (`parseCoordinatePair`,
+    `formatCoordinatePair`) + test (valid koma/spasi, invalid, out-of-range, batas ±90/±180)
+  * Diubah: `src/features/metadata/metadata-editor-sheet.tsx` (state `coordinateText`/
+    `coordinateError`, validasi inline, tombol "Salin dari GPS" ikut sinkron field baru)
+  * Tidak mengubah `ManualLocationInput` type — hanya cara input UI.
+
+### C. Selaraskan angka watermark ke referensi mobile GeoPatriot
+- [✓] ✅ Nilai default per template (`opacity`, `fontSizePx`, `marginPx`, `radiusPx`,
+  `spacingPx`, `mapThumbnailSizePx`, `visibleFields.altitude`) diselaraskan dengan hasil
+  tuning device nyata di `referensi/GeoPatriot-main/lib/watermark/`. Field baru `mapZoom`
+  ditambahkan dan benar-benar dipakai (bukan kosmetik) untuk level zoom static map.
+  Visual style web (Deep Navy panel, teks berwarna per-field, logo inline) **SENGAJA
+  dipertahankan** sesuai keputusan user — bukan full rewrite ke gaya mobile (panel
+  auto-size/badge terpisah/teks putih polos/panel hitam). Posisi tetap 2 opsi (top/bottom).
+  * Diubah: `src/types/watermark.ts` (+`mapZoom`), `src/lib/image/templates/{default,ringkas,detail}.ts`
+    (nilai baru), `src/features/location/use-geolocation.ts` (`mapZoom` opsi hook, bukan
+    hardcode 16), `src/features/camera/camera-screen.tsx` (teruskan `mapZoom`),
+    `src/lib/storage/session-repository.test.ts` & `src/lib/image/watermark-layout.test.ts`
+    (sesuaikan fixture/assertion ke nilai & default baru)
+  * **NOT VERIFIED tanpa browser nyata**: hasil visual watermark baru (opacity/font/spacing)
+    hanya diverifikasi lewat nilai numerik di unit test, belum dilihat mata di foto nyata.
+
+### D. Buka kunci orientasi landscape
+- [✓] ✅ `src/app/manifest.ts`: `orientation: "portrait"` → `"any"`. Pipeline watermark/
+  capture tidak diubah (sudah adaptif terhadap dimensi aktual).
+  * Diubah: `src/app/manifest.ts`, `src/features/pwa/pwa.test.ts` (assertion disesuaikan)
+  * **NOT VERIFIED tanpa device nyata — TIDAK ADA JAMINAN**: web tidak punya API setara
+    "lock capture orientation" milik native (dikonfirmasi dari `camera_controller_service.dart`
+    di referensi mobile). Hasil capture landscape bergantung pada bagaimana
+    browser/device melaporkan `video.videoWidth`/`videoHeight`, yang TIDAK konsisten
+    antar browser/device.
+
+### E. PWA Standalone Audit + Fullscreen Camera Experience
+
+**A. Ringkasan perubahan**: PWA tidak diubah (sudah memadai, lihat poin B). Fitur baru:
+Fullscreen API dengan capability detection, state sinkron dari browser sungguhan, toggle
+button di header, safe-area insets di header & kontrol bawah.
+- Dibuat: `src/lib/browser/fullscreen.ts` (+test), `src/features/camera/use-fullscreen.ts` (+test jsdom)
+- Diubah: `src/components/icons/index.tsx` (+`MaximizeIcon`/`MinimizeIcon`),
+  `src/features/camera/camera-screen.tsx` (rootRef, tombol fullscreen di header, `max-w-none`
+  kondisional, safe-area header), `src/features/camera/camera-controls.tsx` (safe-area footer)
+
+**B. PWA**: `display: "standalone"`, `name`/`short_name`/`start_url`/`theme_color`/
+`background_color`/icon `any`+`maskable` di `manifest.ts` sudah benar (icon size sudah
+diperbaiki sesi audit sebelumnya). `viewportFit: "cover"` di `layout.tsx` sudah ada
+(prasyarat wajib `env(safe-area-inset-*)` bekerja di iOS). `use-pwa.ts`/`pwa-banner.tsx`
+(standalone detection, install prompt, service worker) sudah lengkap. **Tidak ada perubahan
+kode PWA** kecuali `orientation` (lihat bagian D, terpisah dari task fullscreen ini).
+
+**C. Fullscreen**: `src/lib/browser/fullscreen.ts` membungkus `requestFullscreen()`/
+`exitFullscreen()` cross-vendor (standard + `webkit*` untuk Safari), tidak pernah throw.
+`use-fullscreen.ts` men-derive `isFullscreen` HANYA dari event `fullscreenchange` yang
+membaca `document.fullscreenElement` sesungguhnya — bukan diasumsikan dari hasil
+request/exit — supaya tetap sinkron saat user keluar lewat tombol browser/Escape/gesture
+platform, bukan hanya lewat tombol app. Target fullscreen adalah root div `camera-screen.tsx`;
+`max-w-md mx-auto` dilepas jadi `max-w-none` secara kondisional saat fullscreen aktif agar
+tidak muncul letterbox kosong.
+
+**D. Browser fallback**: `isFullscreenSupported()` menyembunyikan tombol total bila browser
+tidak mendukung (bukan tombol yang selalu ada tapi gagal diam-diam). Bila `requestFullscreen`/
+`exitFullscreen` reject (permission/user-gesture/browser), `toggleFullscreen()` mengembalikan
+`{status:"error"}` (bukan throw) dan `camera-screen.tsx` menampilkan toast ringan "Layar
+penuh tidak tersedia di browser ini." — sekali per klik, tidak berulang per render.
+
+**E. Camera compatibility**: Zoom (camera & map), watermark engine, capture pipeline,
+metadata snapshot, session gallery, IndexedDB, download/ZIP, LocationIQ provider, service
+worker **TIDAK disentuh sama sekali** — Fullscreen hanya membungkus toggle di layer terluar.
+
+**F. Tests**: 116/116 test lulus (30 test suite, naik dari 95 — tambahan test untuk
+`parseCoordinatePair`, `fullscreen.ts`, `use-fullscreen.ts`, plus penyesuaian 2 test lama ke
+nilai/default baru). TypeScript: **PASS**. ESLint: **PASS**. Production build (`next build`,
+Turbopack): **PASS**.
+
+**G. Device verification**:
+- **Verified** (lewat unit test, bukan device nyata): logic capability-detection Fullscreen
+  API (browser mendukung/tidak), state toggle request→exit, sinkronisasi state saat keluar
+  fullscreen lewat event eksternal (simulasi), penanganan reject tanpa throw; logic parser
+  koordinat gabungan (semua kasus format); nilai numerik template watermark baru.
+- **Not verified** (WAJIB device/browser nyata, belum dilakukan sesi ini): perilaku
+  Fullscreen API sungguhan di Android Chrome, iPhone Safari (termasuk keterbatasan versi
+  &lt;16.4 yang historisnya tidak mendukung fullscreen elemen sembarang sama sekali, hanya
+  `<video>`), Desktop Chrome/Safari; rendering `env(safe-area-inset-*)` nyata di device
+  bernotch/Dynamic Island/home-indicator; letterboxing fix (`max-w-none`) di layar
+  besar/landscape sungguhan; galeri benar-benar tampil (Bagian A); hasil visual watermark
+  baru (Bagian C); landscape capture (Bagian D).
+
+**H. Dokumentasi**: `agents/tasklist.md` (bagian ini). PRD/rules/workflow tidak diubah
+(fitur fullscreen belum didokumentasikan formal di sana — bisa ditambahkan terpisah bila
+user ingin menjadikannya bagian resmi product behavior).
+
+**I. Remaining issues**:
+- iOS Safari versi lama (&lt;16.4) kemungkinan tidak menampilkan tombol fullscreen sama
+  sekali (`isFullscreenSupported()` akan false) — ini fallback yang benar, bukan bug, tapi
+  berarti fitur ini efektif tidak tersedia di sebagian populasi iPhone lama.
+  Non-goals task ini SEMUA dipatuhi: tidak ada native app/APK/IPA/Capacitor/Cordova/Electron,
+  tidak ada backend/database baru, tidak ada perubahan provider LocationIQ/watermark engine/
+  camera pipeline di luar yang didokumentasikan, tidak ada dependency baru, tidak ada
+  commit/push (menunggu instruksi user).
+

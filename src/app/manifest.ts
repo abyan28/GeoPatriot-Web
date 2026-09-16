@@ -14,7 +14,11 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#08111d",
     theme_color: "#08111d",
-    orientation: "portrait",
+    // "any" (bukan "portrait") agar PWA standalone tidak mengunci orientasi —
+    // pipeline capture/watermark sudah adaptif terhadap dimensi aktual, tapi
+    // hasil landscape TIDAK terjamin konsisten di semua device/browser
+    // (web tidak punya API setara "lock capture orientation" milik native).
+    orientation: "any",
     categories: ["photography", "utilities", "productivity"],
     icons: [
       // File public/app-icon.png berdimensi aktual 1024x1024 — sizes di sini

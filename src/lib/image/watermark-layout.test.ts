@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WatermarkData } from "@/types/watermark";
-import { createDefaultTemplate, createRingkasTemplate } from "./templates";
+import { createDefaultTemplate, createDetailTemplate, createRingkasTemplate } from "./templates";
 import {
   buildWatermarkTextLines,
   clampOutputDimensions,
@@ -19,7 +19,7 @@ const SAMPLE_DATA: WatermarkData = {
 };
 
 describe("buildWatermarkTextLines", () => {
-  it("menyertakan semua field pada template default", () => {
+  it("menyertakan field utama pada template default (altitude nonaktif, selaras referensi mobile)", () => {
     const settings = createDefaultTemplate();
     const lines = buildWatermarkTextLines(SAMPLE_DATA, settings).map((l) => l.text);
 
@@ -27,8 +27,14 @@ describe("buildWatermarkTextLines", () => {
     expect(lines).toContain("Monas, Jakarta Pusat, DKI Jakarta");
     expect(lines).toContain(formatCoordinate(-6.175392, 106.827153));
     expect(lines).toContain("Akurasi ±4 m");
-    expect(lines).toContain("Altitude 12 m");
+    expect(lines).not.toContain("Altitude 12 m");
     expect(lines).toContain("GeoPatriot");
+  });
+
+  it("menyertakan altitude pada template detail", () => {
+    const settings = createDetailTemplate();
+    const lines = buildWatermarkTextLines(SAMPLE_DATA, settings).map((l) => l.text);
+    expect(lines).toContain("Altitude 12 m");
   });
 
   it("template ringkas hanya menampilkan field minimal", () => {

@@ -10,12 +10,14 @@ export function createRingkasTemplate(
   return {
     template: "ringkas",
     position: "bottom",
-    opacity: 0.7,
+    // Nilai diselaraskan dengan tuning GeoPatriot mobile (lihat catatan di default.ts).
+    opacity: 0.5,
     fontSizePx: 14,
     mapThumbnailSizePx: 0,
+    mapZoom: 16,
     marginPx: 12,
-    radiusPx: 10,
-    spacingPx: 4,
+    radiusPx: 8,
+    spacingPx: 2,
     alignment: "left",
     visibleFields: {
       locationName: true,

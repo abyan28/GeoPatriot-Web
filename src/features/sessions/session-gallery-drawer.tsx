@@ -70,7 +70,6 @@ function PhotoThumbnailCard({
         src={thumbUrl}
         alt={`Foto ${photo.id}`}
         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-        loading="lazy"
       />
 
       {/* Checkbox Overlay Seleksi */}

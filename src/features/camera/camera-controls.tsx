@@ -63,7 +63,9 @@ export function CameraControls({
   onZoomChange,
 }: CameraControlsProps) {
   return (
-    <div className="w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-3 pb-8 px-6 flex flex-col z-30 select-none">
+    // Padding bawah mempertimbangkan safe-area (home indicator iPhone) — relevan
+    // saat browser chrome hilang, baik via Fullscreen API maupun PWA standalone.
+    <div className="w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-3 pb-[max(2rem,env(safe-area-inset-bottom))] px-6 flex flex-col z-30 select-none">
       {/* Baris Kontrol Zoom Adaptif (Thumb Zone, Rules #3.11) */}
       {zoomCapabilities && zoomPresets.length > 1 && onZoomChange && (
         <div className="flex items-center justify-center pb-3">

@@ -13,6 +13,7 @@ function buildSession(overrides: Partial<Session> = {}): Session {
       opacity: 0.8,
       fontSizePx: 16,
       mapThumbnailSizePx: 96,
+      mapZoom: 16,
       marginPx: 12,
       radiusPx: 8,
       spacingPx: 4,
