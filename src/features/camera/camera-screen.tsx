@@ -53,20 +53,6 @@ export function CameraScreen() {
   const { watermarkSettings } = appSettings;
 
   const {
-    status: geoStatus,
-    coordinate: geoCoord,
-    quality: geoQuality,
-    addressInfo: geoAddress,
-    mapThumbnailUrl,
-    refresh: refreshGps,
-  } = useGeolocation({
-    autoStart: true,
-    resolveAddress: true,
-    resolveMapThumbnail: watermarkSettings.visibleFields.mapThumbnail,
-    mapZoom: watermarkSettings.mapZoom,
-  });
-
-  const {
     locationMode,
     timeMode,
     manualLocation,
@@ -80,6 +66,32 @@ export function CameraScreen() {
     createSnapshot,
     resetToDefaults,
   } = useMetadataConfig();
+
+  const {
+    status: geoStatus,
+    coordinate: geoCoord,
+    quality: geoQuality,
+    addressInfo: geoAddress,
+    mapThumbnailUrl,
+    resolveForCoordinate,
+    refresh: refreshGps,
+  } = useGeolocation({
+    autoStart: true,
+    resolveAddress: true,
+    resolveMapThumbnail: watermarkSettings.visibleFields.mapThumbnail,
+    mapZoom: watermarkSettings.mapZoom,
+    // Saat mode manual aktif, resolve GPS watch di-skip agar tidak berebut
+    // addressInfo/mapThumbnailUrl dengan hasil resolve koordinat manual (di bawah).
+    isManualLocationActive: locationMode === "manual",
+  });
+
+  // Memicu reverse geocoding + map thumbnail untuk koordinat manual yang
+  // diisi/diubah user — sebelumnya field ini kosong karena tidak ada wiring
+  // sama sekali ke LocationIQ untuk mode manual.
+  useEffect(() => {
+    if (locationMode !== "manual") return;
+    resolveForCoordinate(manualLocation.latitude, manualLocation.longitude);
+  }, [locationMode, manualLocation.latitude, manualLocation.longitude, resolveForCoordinate]);
 
   const {
     capturePhoto,
@@ -96,7 +108,7 @@ export function CameraScreen() {
       createSnapshot({
         gpsCoordinate: geoCoord,
         gpsQuality: geoQuality,
-        gpsAddressInfo: geoAddress,
+        resolvedAddressInfo: geoAddress,
         // Baca zoom aktual dari hardware track (bukan React state UI) tepat di
         // detik shutter, agar tidak stale terhadap gestur pinch yang baru
         // selesai (audit finding FINDING-05).
@@ -197,8 +209,14 @@ export function CameraScreen() {
   const activeLocationName =
     locationMode === "gps"
       ? geoAddress?.locationName || (geoCoord ? "Koordinat GPS Lapangan" : "Mencari Lokasi...")
-      : manualLocation.locationName || "Lokasi Manual";
-  const activeAddress = locationMode === "gps" ? geoAddress?.address : manualLocation.address;
+      : // geoAddress di mode manual berisi hasil resolveForCoordinate untuk
+        // koordinat manual (bukan posisi GPS) — dipakai sebagai fallback bila
+        // user belum mengisi nama lokasi/alamat sendiri.
+        manualLocation.locationName || geoAddress?.locationName || "Lokasi Manual";
+  const activeAddress =
+    locationMode === "gps"
+      ? geoAddress?.address
+      : manualLocation.address || geoAddress?.address;
   const activeTimeDisplay = timeMode === "auto" ? liveClock : manualDateTime.replace("T", " ");
 
   return (

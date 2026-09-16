@@ -25,7 +25,7 @@ describe("buildMetadataSnapshot", () => {
       manualDateTime: "2026-09-16T10:00",
       gpsCoordinate: mockGpsCoordinate,
       gpsQuality: "good",
-      gpsAddressInfo: {
+      resolvedAddressInfo: {
         locationName: "IKN Sepaku",
         address: "Penajam Paser Utara, Kalimantan Timur",
       },
@@ -68,6 +68,40 @@ describe("buildMetadataSnapshot", () => {
     expect(snapshot.address).toBe("Surabaya, Jawa Timur");
     expect(snapshot.customText).toBe("Pemeriksaan Batas Wilayah");
     expect(snapshot.capturedAt).toContain("2026-08-17T");
+  });
+
+  it("mode manual memakai resolvedAddressInfo sebagai fallback hanya bila field manual kosong", () => {
+    const snapshotKosong = buildMetadataSnapshot({
+      locationMode: "manual",
+      timeMode: "auto",
+      manualLocation: { latitude: -9.62, longitude: 124.88, locationName: "", address: "" },
+      manualDateTime: "2026-09-16T10:00",
+      resolvedAddressInfo: {
+        locationName: "Kobalima Timur",
+        address: "Kobalima Timur, Belu, NTT",
+      },
+    });
+    expect(snapshotKosong.locationName).toBe("Kobalima Timur");
+    expect(snapshotKosong.address).toBe("Kobalima Timur, Belu, NTT");
+
+    const snapshotSudahDiisi = buildMetadataSnapshot({
+      locationMode: "manual",
+      timeMode: "auto",
+      manualLocation: {
+        latitude: -9.62,
+        longitude: 124.88,
+        locationName: "Nama Pilihan User",
+        address: "Alamat Pilihan User",
+      },
+      manualDateTime: "2026-09-16T10:00",
+      resolvedAddressInfo: {
+        locationName: "Kobalima Timur",
+        address: "Kobalima Timur, Belu, NTT",
+      },
+    });
+    // Field yang sudah diisi manual oleh user TIDAK BOLEH ditimpa oleh hasil resolve otomatis.
+    expect(snapshotSudahDiisi.locationName).toBe("Nama Pilihan User");
+    expect(snapshotSudahDiisi.address).toBe("Alamat Pilihan User");
   });
 
   it("melakukan fallback ke lokasi manual jika mode GPS dipilih tetapi GPS belum terbaca", () => {

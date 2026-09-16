@@ -30,7 +30,13 @@ export interface UseMetadataConfigReturn extends MetadataConfigState {
   createSnapshot: (params: {
     gpsCoordinate?: GeoCoordinate | null;
     gpsQuality?: GpsQuality | null;
-    gpsAddressInfo?: { locationName?: string; address?: string } | null;
+    /**
+     * Alamat hasil reverse geocoding — dipakai untuk mode GPS (posisi live)
+     * MAUPUN mode manual (hasil resolve koordinat manual via
+     * useGeolocation().resolveForCoordinate), sebagai fallback bila field
+     * locationName/address manual belum diisi user sendiri.
+     */
+    resolvedAddressInfo?: { locationName?: string; address?: string } | null;
     zoom?: number;
   }) => MetadataSnapshot;
   resetToDefaults: () => void;
@@ -81,7 +87,8 @@ export interface BuildMetadataSnapshotParams {
   customNote?: string;
   gpsCoordinate?: GeoCoordinate | null;
   gpsQuality?: GpsQuality | null;
-  gpsAddressInfo?: { locationName?: string; address?: string } | null;
+  /** Alamat hasil reverse geocoding — GPS live ATAU koordinat manual (lihat createSnapshot). */
+  resolvedAddressInfo?: { locationName?: string; address?: string } | null;
   /** Tingkat zoom aktif saat pengambilan foto (rules #5.5 & #15.9). */
   zoom?: number;
 }
@@ -98,7 +105,7 @@ export function buildMetadataSnapshot({
   customNote,
   gpsCoordinate,
   gpsQuality,
-  gpsAddressInfo,
+  resolvedAddressInfo,
   zoom,
 }: BuildMetadataSnapshotParams): MetadataSnapshot {
   const timezone = getLocalTimezone();
@@ -113,17 +120,21 @@ export function buildMetadataSnapshot({
   if (locationMode === "gps" && gpsCoordinate) {
     finalCoordinate = { ...gpsCoordinate };
     finalQuality = gpsQuality ?? undefined;
-    finalLocationName = gpsAddressInfo?.locationName;
-    finalAddress = gpsAddressInfo?.address;
+    finalLocationName = resolvedAddressInfo?.locationName;
+    finalAddress = resolvedAddressInfo?.address;
   } else {
-    // Mode manual atau fallback jika GPS belum terbaca
+    // Mode manual atau fallback jika GPS belum terbaca. Field yang diisi
+    // manual oleh user tetap prioritas; resolvedAddressInfo (hasil reverse
+    // geocoding otomatis untuk koordinat manual) hanya dipakai sebagai
+    // fallback bila user belum mengisi nama lokasi/alamat sendiri.
     finalCoordinate = {
       latitude: manualLocation.latitude,
       longitude: manualLocation.longitude,
     };
     finalQuality = undefined;
-    finalLocationName = manualLocation.locationName || undefined;
-    finalAddress = manualLocation.address || undefined;
+    finalLocationName =
+      manualLocation.locationName || resolvedAddressInfo?.locationName || undefined;
+    finalAddress = manualLocation.address || resolvedAddressInfo?.address || undefined;
   }
 
   // Penentuan waktu capture
@@ -212,12 +223,12 @@ export function useMetadataConfig(): UseMetadataConfigReturn {
     ({
       gpsCoordinate,
       gpsQuality,
-      gpsAddressInfo,
+      resolvedAddressInfo,
       zoom,
     }: {
       gpsCoordinate?: GeoCoordinate | null;
       gpsQuality?: GpsQuality | null;
-      gpsAddressInfo?: { locationName?: string; address?: string } | null;
+      resolvedAddressInfo?: { locationName?: string; address?: string } | null;
       zoom?: number;
     }): MetadataSnapshot => {
       return buildMetadataSnapshot({
@@ -228,7 +239,7 @@ export function useMetadataConfig(): UseMetadataConfigReturn {
         customNote,
         gpsCoordinate,
         gpsQuality,
-        gpsAddressInfo,
+        resolvedAddressInfo,
         zoom,
       });
     },

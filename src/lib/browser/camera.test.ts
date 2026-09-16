@@ -7,6 +7,7 @@ import {
   getCameraCurrentZoom,
   applyCameraZoom,
   calculateZoomPresets,
+  waitForVideoFrame,
 } from "./camera";
 
 describe("isCameraSupported", () => {
@@ -134,6 +135,54 @@ describe("Camera Zoom Utilities", () => {
     // Perangkat dengan rentang terbatas (misal 1x - 1.8x)
     const presetsLimited = calculateZoomPresets({ min: 1, max: 1.8, step: 0.1 });
     expect(presetsLimited).toEqual([1, 1.8]);
+  });
+});
+
+/** Video palsu berbasis EventTarget asli agar addEventListener("loadeddata", ...) berfungsi. */
+class FakeVideoElement extends EventTarget {
+  readyState: number;
+  constructor(readyState: number) {
+    super();
+    this.readyState = readyState;
+  }
+}
+
+describe("waitForVideoFrame", () => {
+  it("resolve segera bila readyState sudah HAVE_CURRENT_DATA atau lebih", async () => {
+    const video = new FakeVideoElement(2) as unknown as HTMLVideoElement;
+    await expect(waitForVideoFrame(video, 5000)).resolves.toBeUndefined();
+  });
+
+  it("menunggu event loadeddata bila readyState masih di bawah HAVE_CURRENT_DATA", async () => {
+    const video = new FakeVideoElement(1) as unknown as HTMLVideoElement;
+    const promise = waitForVideoFrame(video, 5000);
+
+    let resolved = false;
+    void promise.then(() => {
+      resolved = true;
+    });
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    (video as unknown as EventTarget).dispatchEvent(new Event("loadeddata"));
+    await promise;
+    expect(resolved).toBe(true);
+  });
+
+  it("tetap resolve setelah timeout meski loadeddata tidak pernah terjadi (tidak pernah hang)", async () => {
+    vi.useFakeTimers();
+    try {
+      const video = new FakeVideoElement(0) as unknown as HTMLVideoElement;
+      const promise = waitForVideoFrame(video, 1000);
+      vi.advanceTimersByTime(1000);
+      await expect(promise).resolves.toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resolve segera bila video null", async () => {
+    await expect(waitForVideoFrame(null)).resolves.toBeUndefined();
   });
 });
 

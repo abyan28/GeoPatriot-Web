@@ -10,6 +10,7 @@ import {
   getCameraCurrentZoom,
   applyCameraZoom,
   calculateZoomPresets,
+  waitForVideoFrame,
   type CameraStatus,
   type CameraFacingMode,
   type ZoomCapabilities,
@@ -146,14 +147,19 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
         }
 
         const result = await startCamera(targetMode);
-        setStatus(result.status);
 
         if (result.status === "ready" && result.stream) {
           setStream(result.stream);
           setFacingMode(targetMode);
           attachStreamToVideo(result.stream);
           syncZoomCapabilities(result.stream);
+          // Tunda status "ready" (mengaktifkan shutter) sampai frame pertama
+          // benar-benar ter-decode — mencegah capture menghasilkan foto hitam
+          // (audit finding: foto terbaru tampil hitam di galeri).
+          await waitForVideoFrame(videoRef.current);
+          setStatus("ready");
         } else {
+          setStatus(result.status);
           syncZoomCapabilities(null);
           setErrorMessage(result.errorMessage ?? "Gagal mengaktifkan kamera.");
         }
@@ -195,14 +201,17 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
     try {
       setStatus("requesting");
       const result = await switchCamera(stream, nextMode);
-      setStatus(result.status);
 
       if (result.status === "ready" && result.stream) {
         setStream(result.stream);
         setFacingMode(nextMode);
         attachStreamToVideo(result.stream);
         syncZoomCapabilities(result.stream);
+        // Sama seperti start(): tunda "ready" sampai frame pertama ter-decode.
+        await waitForVideoFrame(videoRef.current);
+        setStatus("ready");
       } else {
+        setStatus(result.status);
         syncZoomCapabilities(null);
         setErrorMessage(result.errorMessage ?? "Gagal beralih kamera.");
       }

@@ -20,6 +20,16 @@ export function useOverlayBehavior(
   containerRef: React.RefObject<HTMLElement | null>,
 ): void {
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  // Ref selalu menyimpan onClose terbaru, agar handler Escape tidak pernah
+  // stale meski identitas fungsi onClose berubah setiap render (mis. inline
+  // arrow function dari parent). Ditulis lewat effect terpisah (bukan
+  // langsung di badan render) karena menulis ref saat render dilarang
+  // React/eslint — effect ini sengaja TIDAK dipakai untuk setup fokus/scroll-lock
+  // (itu ada di effect utama di bawah, yang sengaja tidak bergantung ke onClose).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,7 +46,7 @@ export function useOverlayBehavior(
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab" || !container) return;
@@ -68,5 +78,9 @@ export function useOverlayBehavior(
       document.body.style.overflow = "";
       previousActiveElementRef.current?.focus?.();
     };
-  }, [isOpen, onClose, containerRef]);
+    // SENGAJA tidak menyertakan `onClose` di deps (dibaca lewat onCloseRef) —
+    // supaya effect ini (termasuk focus-grab awal) tidak re-run hanya karena
+    // parent re-render dan membuat inline onClose baru (audit: menyebabkan
+    // fokus input direbut ulang tiap detik, membuat keyboard HP langsung tertutup).
+  }, [isOpen, containerRef]);
 }

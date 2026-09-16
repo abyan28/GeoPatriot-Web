@@ -26,6 +26,11 @@ export type CanvasCreator = (
   toBlob(callback: (blob: Blob | null) => void, type?: string, quality?: number): void;
 };
 
+// Nilai HTMLMediaElement.HAVE_CURRENT_DATA per spec (=2), ditulis sebagai
+// literal agar tidak bergantung pada global HTMLMediaElement yang tidak ada
+// di environment test Node (bukan browser/jsdom).
+const HAVE_CURRENT_DATA = 2;
+
 function defaultCanvasCreator(width: number, height: number) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -61,6 +66,19 @@ export async function captureVideoFrame(
     return {
       status: "error",
       errorMessage: "Dimensi video kamera belum tersedia (video belum aktif).",
+    };
+  }
+
+  // Guard defensif: videoWidth/videoHeight bisa sudah terisi (dari event
+  // loadedmetadata) SEBELUM frame pertama benar-benar ter-decode/tampil.
+  // drawImage() pada video dalam kondisi ini menghasilkan Blob JPEG yang
+  // VALID ukurannya tapi ISI-nya hitam polos — bukan error, jadi harus
+  // dicegah eksplisit di sini (rules #7.7), bukan cuma diandalkan dari
+  // use-camera.ts menunda status "ready" (lapisan pertahanan kedua).
+  if (video.readyState < HAVE_CURRENT_DATA) {
+    return {
+      status: "error",
+      errorMessage: "Kamera belum benar-benar siap. Coba lagi sesaat.",
     };
   }
 

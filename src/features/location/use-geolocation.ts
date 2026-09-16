@@ -29,6 +29,15 @@ export interface UseGeolocationOptions {
   resolveMapThumbnail?: boolean;
   /** Level zoom static map thumbnail (12-19), mengikuti WatermarkVisualSettings.mapZoom (default: 16). */
   mapZoom?: number;
+  /**
+   * Saat true, update posisi dari GPS watch TIDAK memicu resolveLocationAddress/
+   * resolveMapThumbnailImage (default: false) — dipakai saat mode lokasi manual
+   * aktif, agar hasil resolve GPS yang berjalan di background tidak berebut
+   * dengan hasil resolve koordinat manual (`resolveForCoordinate`) atas state
+   * addressInfo/mapThumbnailUrl yang sama. Pembacaan coordinate/quality/status
+   * GPS tetap berjalan normal (tombol "Salin dari GPS" tetap berfungsi).
+   */
+  isManualLocationActive?: boolean;
 }
 
 /** Ukuran static map thumbnail yang diminta ke MapProvider (zoom diatur via opsi hook). */
@@ -45,6 +54,8 @@ export interface UseGeolocationReturn {
   isResolvingAddress: boolean;
   /** Object URL map thumbnail terbaru, atau null bila belum tersedia/gagal (rules #6.6: non-fatal). */
   mapThumbnailUrl: string | null;
+  /** Memicu reverse geocoding + map thumbnail untuk koordinat manapun (dipakai mode manual). */
+  resolveForCoordinate: (lat: number, lon: number) => void;
   startWatching: () => void;
   stopWatching: () => void;
   refresh: () => Promise<GeolocationReadResult>;
@@ -63,6 +74,7 @@ export function useGeolocation({
   resolveAddress = true,
   resolveMapThumbnail = false,
   mapZoom = DEFAULT_MAP_ZOOM,
+  isManualLocationActive = false,
 }: UseGeolocationOptions = {}): UseGeolocationReturn {
   const [status, setStatus] = useState<GeolocationStatus>(() => {
     if (!isGeolocationSupported()) return "unsupported";
@@ -192,8 +204,14 @@ export function useGeolocation({
         setCoordinate(result.coordinate);
         setQuality(result.quality ?? null);
         setErrorMessage(null);
-        void resolveLocationAddress(result.coordinate.latitude, result.coordinate.longitude);
-        void resolveMapThumbnailImage(result.coordinate.latitude, result.coordinate.longitude);
+        // Saat mode manual aktif, jangan resolve address/map untuk posisi GPS
+        // background — biarkan resolveForCoordinate (dipicu koordinat manual)
+        // yang memegang state addressInfo/mapThumbnailUrl, agar keduanya tidak
+        // berebut (lihat catatan isManualLocationActive di atas).
+        if (!isManualLocationActive) {
+          void resolveLocationAddress(result.coordinate.latitude, result.coordinate.longitude);
+          void resolveMapThumbnailImage(result.coordinate.latitude, result.coordinate.longitude);
+        }
       } else if (
         result.status === "denied" ||
         result.status === "error" ||
@@ -201,6 +219,21 @@ export function useGeolocation({
       ) {
         setErrorMessage(result.errorMessage ?? "Gagal memperoleh lokasi.");
       }
+    },
+    [resolveLocationAddress, resolveMapThumbnailImage, isManualLocationActive],
+  );
+
+  /**
+   * Memicu reverse geocoding + map thumbnail untuk koordinat manapun secara
+   * eksplisit (bukan hanya dari GPS watch) — dipakai saat pengguna mengisi
+   * koordinat manual, agar mendapat alamat & map thumbnail yang sama seperti
+   * mode GPS (rules #4.7, PRD #8.1). Reuse penuh staleness-guard & object-URL
+   * lifecycle yang sudah ada di resolveLocationAddress/resolveMapThumbnailImage.
+   */
+  const resolveForCoordinate = useCallback(
+    (lat: number, lon: number) => {
+      void resolveLocationAddress(lat, lon);
+      void resolveMapThumbnailImage(lat, lon);
     },
     [resolveLocationAddress, resolveMapThumbnailImage],
   );
@@ -289,6 +322,7 @@ export function useGeolocation({
     addressInfo,
     isResolvingAddress,
     mapThumbnailUrl,
+    resolveForCoordinate,
     startWatching,
     stopWatching,
     refresh,

@@ -98,6 +98,48 @@ export async function switchCamera(
   return startCamera(nextFacingMode);
 }
 
+// HTMLMediaElement.HAVE_CURRENT_DATA per spec (=2), literal agar tidak
+// bergantung global HTMLMediaElement (tidak ada di environment test Node).
+const HAVE_CURRENT_DATA = 2;
+
+/**
+ * Menunggu frame pertama video benar-benar ter-decode sebelum dianggap siap
+ * di-capture. `videoWidth`/`videoHeight` bisa sudah terisi lewat event
+ * `loadedmetadata` SEBELUM frame nyata tampil (`readyState < HAVE_CURRENT_DATA`)
+ * — capture pada kondisi ini menghasilkan Blob valid berisi frame hitam
+ * (audit finding: foto terbaru tampil hitam). Timeout tetap resolve (tidak
+ * pernah menggantung kamera selamanya) karena ini pencegahan race, bukan
+ * syarat mutlak — rules #3: capture tidak boleh diblokir tanpa batas waktu.
+ */
+export function waitForVideoFrame(
+  video: HTMLVideoElement | null,
+  timeoutMs = 3000,
+): Promise<void> {
+  return new Promise((resolve) => {
+    if (!video || video.readyState >= HAVE_CURRENT_DATA) {
+      resolve();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, timeoutMs);
+
+    function handleLoadedData() {
+      cleanup();
+      resolve();
+    }
+
+    function cleanup() {
+      clearTimeout(timer);
+      video?.removeEventListener("loadeddata", handleLoadedData);
+    }
+
+    video.addEventListener("loadeddata", handleLoadedData);
+  });
+}
+
 /**
  * Rentang kapabilitas native camera zoom yang dilaporkan oleh browser/hardware.
  * Sesuai W3C Image Capture spec (rules #3.8).

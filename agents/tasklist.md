@@ -448,3 +448,90 @@ user ingin menjadikannya bagian resmi product behavior).
   camera pipeline di luar yang didokumentasikan, tidak ada dependency baru, tidak ada
   commit/push (menunggu instruksi user).
 
+## Sesi Lanjutan: Fix Bug dari Uji Coba Nyata (keyboard, geocode manual, foto hitam, scroll landscape)
+
+User mencoba app secara nyata dan melaporkan 5 hal. 4 di antaranya root cause-nya dikonfirmasi
+dari kode langsung dan sudah diperbaiki; 1 (fullscreen exit) dicek dan TIDAK ada bug kode.
+
+### 1. [✓] ✅ Keyboard HP muncul lalu langsung tenggelam saat mengetik di form manapun
+Root cause: `src/components/ui/use-overlay-behavior.ts` — effect auto-focus-grab punya
+dependency `onClose`, yang selalu inline arrow function baru di setiap render
+`camera-screen.tsx`. `CameraScreen` re-render tiap 1 detik (`liveClock` interval), jadi tiap
+detik effect ini re-fire dan MEREBUT FOKUS balik ke elemen focusable pertama sheet — persis
+membuat keyboard HP langsung hilang tiap kali muncul.
+* Diubah: `src/components/ui/use-overlay-behavior.ts` — `onClose` dipisah ke `onCloseRef`
+  (di-update via effect terpisah `[onClose]`), effect utama (focus-grab, body-lock, tab-trap)
+  sekarang hanya depend ke `[isOpen, containerRef]`, tidak lagi re-run karena parent re-render.
+* Berlaku otomatis ke SEMUA sheet (Settings/Metadata/Gallery/Diagnostics) karena satu hook
+  dipakai bersama oleh `Dialog.tsx` & `BottomSheet.tsx`.
+* **NOT VERIFIED tanpa device nyata**: perlu dicoba ulang mengetik di field manapun (terutama
+  koordinat manual) untuk konfirmasi keyboard tidak lagi hilang sendiri.
+
+### 2. [✓] ✅ Input koordinat manual sekarang memicu alamat & map thumbnail LocationIQ
+Root cause: tidak ada wiring sama sekali dari mode manual ke provider geocoding/map — bukan
+regresi, memang belum pernah dibuat.
+* Diubah: `src/features/location/use-geolocation.ts` (opsi `isManualLocationActive` — GPS
+  watch skip resolve address/map saat manual aktif agar tidak berebut state; fungsi baru
+  `resolveForCoordinate(lat, lon)` reuse penuh staleness-guard & object-URL lifecycle yang
+  sudah ada), `src/features/metadata/use-metadata-config.ts` (rename param `gpsAddressInfo` →
+  `resolvedAddressInfo`, dipakai GPS ATAU manual; branch manual fallback ke resolved address
+  HANYA bila field manual kosong — tidak menimpa input user), `src/features/camera/camera-screen.tsx`
+  (`useEffect` memicu `resolveForCoordinate` saat koordinat manual berubah; HUD
+  `activeLocationName`/`activeAddress` fallback ke hasil resolve).
+  Map thumbnail untuk foto mode manual JUGA ikut terisi (state yang sama dipakai capture
+  pipeline), bukan hanya alamat di HUD.
+* Test baru: `src/features/metadata/metadata-config.test.ts` (fallback hanya saat field
+  manual kosong, tidak menimpa input user yang sudah diisi).
+* **NOT VERIFIED tanpa device nyata**: perlu dicoba isi koordinat manual lalu cek alamat &
+  map thumbnail benar-benar muncul di HUD dan di watermark foto akhir.
+
+### 3. [✓] ✅ Foto terbaru tampil hitam (foto lama tetap normal) — kemungkinan besar sudah teratasi
+Root cause (investigasi mendalam, paling kuat): `src/lib/image/frame-capture.ts` tidak pernah
+cek `video.readyState` sebelum `drawImage`, dan `use-camera.ts` menandai status "ready"
+(mengaktifkan shutter) TEPAT setelah `getUserMedia()` resolve — sebelum frame pertama
+benar-benar ter-decode. Capture di kondisi ini menghasilkan Blob JPEG valid ukurannya tapi
+ISI-nya hitam polos (beda dari kasus "Blob corrupt" yang sudah diaudit sebelumnya). Diperbesar
+oleh kenaikan resolusi kamera ke ideal 1920×1080 (decode makin lama). `thumbnailBlob` digambar
+dari canvas yang sama, jadi ikut hitam — cocok dengan gejala (thumbnail galeri & foto full-res
+sama-sama kena, foto lama normal karena stream sudah lama `readyState = HAVE_ENOUGH_DATA`).
+* Diubah (2 lapis pertahanan):
+  1. `src/lib/browser/camera.ts`: fungsi baru `waitForVideoFrame(video, timeoutMs=3000)` —
+     resolve segera bila `readyState >= HAVE_CURRENT_DATA`, else tunggu event `loadeddata`
+     dibatasi timeout (timeout tetap resolve, tidak pernah hang capture selamanya).
+  2. `src/features/camera/use-camera.ts`: `start()` & `toggleFacingMode()` — `setStatus("ready")`
+     dipindah ke SETELAH `attachStreamToVideo()` + `await waitForVideoFrame()`, bukan langsung
+     setelah stream resolve. Shutter baru aktif setelah frame pertama benar-benar ter-decode.
+  3. `src/lib/image/frame-capture.ts`: guard defensif di awal `captureVideoFrame` — bila
+     `readyState < HAVE_CURRENT_DATA`, return error eksplisit ("Kamera belum benar-benar siap")
+     alih-alih `drawImage` yang berisiko hasil hitam (jaga-jaga jalur lain di luar #2).
+* Test baru: `src/lib/browser/camera.test.ts` (`waitForVideoFrame`: resolve segera/tunggu
+  event/timeout tetap resolve), `src/lib/image/frame-capture.test.ts` (readyState guard
+  return error, drawImage TIDAK terpanggil).
+* **MASIH NOT VERIFIED tanpa device nyata — ini root cause PALING KUAT dari analisis kode,
+  bukan kepastian mutlak**: agen investigasi mencatat perlu dikonfirmasi apakah foto hitam
+  terjadi di SETIAP shutter press (didukung penuh oleh fix ini) atau hanya capture
+  pertama/setelah flip kamera (yang juga dicakup fix ini). Coba ambil beberapa foto berturut
+  di device nyata untuk memastikan tidak ada lagi foto hitam.
+
+### 4. Fullscreen exit — TIDAK ADA BUG, tidak ada perubahan kode
+Dicek ulang `camera-screen.tsx` & `use-fullscreen.ts`: tombol yang sama (ikon berubah
+Maximize↔Minimize) memanggil `toggleFullscreen()`, yang otomatis memanggil `exitFullscreen()`
+saat `isFullscreen === true`. Logic benar. Bila di device tertentu user masih merasa tidak
+bisa keluar, kemungkinan besar perilaku browser spesifik (di luar kendali kode) — butuh info
+device/browser untuk investigasi lanjut bila memang masih bermasalah.
+
+### 5. [✓] ✅ Panel pengaturan tidak bisa di-scroll saat landscape
+Root cause: `src/components/ui/BottomSheet.tsx` — div konten `overflow-y-auto flex-1` tidak
+punya `min-h-0` (bug flexbox klasik: flex item dengan `flex-1` tetap `min-height:auto` default,
+mencegah shrink, sehingga konten mendorong keluar `max-h-[85vh]` alih-alih scroll internal).
+Tersamarkan di portrait (viewport tinggi cukup), kentara di landscape (viewport pendek) +
+`document.body.style.overflow="hidden"` (dari `useOverlayBehavior`) mengunci scroll body juga
+sehingga konten yang overflow benar-benar tidak terjangkau.
+* Diubah: `src/components/ui/BottomSheet.tsx` (+`min-h-0`). Berlaku otomatis ke SEMUA sheet.
+* **NOT VERIFIED tanpa device nyata**: perlu dicoba putar HP ke landscape, buka Settings,
+  scroll ke bawah untuk konfirmasi.
+
+**Kualitas kode**: 122/122 test lulus (30 suite, naik dari 116 — tambahan test untuk
+`waitForVideoFrame`, readyState guard, dan fallback resolvedAddressInfo). Typecheck/lint/build
+bersih. Belum di-commit — menunggu instruksi user.
+

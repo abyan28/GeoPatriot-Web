@@ -75,7 +75,14 @@ export function BottomSheet({
         </div>
 
         {/* Konten Scrollable */}
-        <div className="px-6 py-4 overflow-y-auto flex-1 overscroll-contain">{children}</div>
+        {/* min-h-0 WAJIB: flex item dengan flex-1 secara default punya
+            min-height:auto yang mencegahnya shrink, sehingga overflow-y-auto
+            tidak pernah benar-benar scroll internal (konten malah mendorong
+            keluar batas max-h-[85vh] parent) — paling kentara di landscape
+            saat tinggi viewport sempit dan body scroll terkunci. */}
+        <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0 overscroll-contain">
+          {children}
+        </div>
 
         {/* Footer Aksi (Opsional) */}
         {footer && (
