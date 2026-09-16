@@ -13,10 +13,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import { PwaBanner } from "@/features/pwa";
+
 export const metadata: Metadata = {
   title: "GeoPatriot Web — Kamera GPS & Dokumentasi Lapangan",
   description:
     "Aplikasi kamera GPS dengan watermark lokasi dan waktu terintegrasi. Local-first, aman, dan tanpa upload foto ke server.",
+  applicationName: "GeoPatriot Web",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "GeoPatriot",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: "/app-icon.png",
     apple: "/app-icon.png",
@@ -43,7 +54,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
         className="min-h-full h-full flex flex-col bg-[#08111d] text-white overflow-x-hidden"
       >
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <PwaBanner />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );
