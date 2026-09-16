@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type { CameraFacingMode, CameraStatus, ZoomCapabilities } from "@/lib/browser/camera";
 import { CameraPermissionFallback } from "./camera-permission-fallback";
 
@@ -35,6 +35,19 @@ export function CameraViewport({
   const isMirror = facingMode === "user";
   const touchStartDistRef = useRef<number | null>(null);
   const touchStartZoomRef = useRef<number>(zoom);
+  // Throttle pinch-to-zoom via requestAnimationFrame agar tidak memanggil
+  // applyConstraints() puluhan kali per detik selama gestur berlangsung
+  // (audit finding FINDING-04) — hanya nilai zoom TERBARU per frame yang dikirim.
+  const pendingZoomFrameRef = useRef<number | null>(null);
+  const latestTargetZoomRef = useRef<number>(zoom);
+
+  useEffect(() => {
+    return () => {
+      if (pendingZoomFrameRef.current !== null) {
+        cancelAnimationFrame(pendingZoomFrameRef.current);
+      }
+    };
+  }, []);
 
   /**
    * Mendeteksi sentuhan dua jari untuk inisiasi gestur pinch-to-zoom.
@@ -68,13 +81,24 @@ export function CameraViewport({
       if (touchStartDistRef.current > 0) {
         const ratio = currentDist / touchStartDistRef.current;
         const targetZoom = touchStartZoomRef.current * ratio;
-        onZoomChange(targetZoom);
+        latestTargetZoomRef.current = targetZoom;
+
+        if (pendingZoomFrameRef.current === null) {
+          pendingZoomFrameRef.current = requestAnimationFrame(() => {
+            pendingZoomFrameRef.current = null;
+            onZoomChange(latestTargetZoomRef.current);
+          });
+        }
       }
     }
   };
 
   const handleTouchEnd = () => {
     touchStartDistRef.current = null;
+    if (pendingZoomFrameRef.current !== null) {
+      cancelAnimationFrame(pendingZoomFrameRef.current);
+      pendingZoomFrameRef.current = null;
+    }
   };
 
   return (

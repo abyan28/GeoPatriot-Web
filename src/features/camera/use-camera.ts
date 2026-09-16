@@ -50,6 +50,10 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
   // Menandai apakah kamera dimatikan sementara karena tab/app masuk background,
   // agar bisa dinyalakan ulang otomatis saat kembali ke foreground.
   const pausedByVisibilityRef = useRef(false);
+  // Penanda urutan permintaan zoom, agar hasil applyCameraZoom yang resolve
+  // basi (setelah ada permintaan zoom lain yang lebih baru, umum terjadi saat
+  // gestur pinch cepat) tidak menimpa state zoom yang seharusnya lebih baru.
+  const zoomRequestIdRef = useRef(0);
 
   /**
    * Menyelaraskan kapabilitas dan nilai zoom saat stream kamera berubah (rules #3.8).
@@ -87,8 +91,12 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
       const step = zoomCapabilities.step || 0.1;
       const rounded = Number((Math.round(clamped / step) * step).toFixed(2));
 
+      // Tandai permintaan ini sebagai yang terbaru; hasil applyConstraints yang
+      // resolve setelah permintaan lebih baru dikirim akan diabaikan
+      // (staleness guard, audit finding FINDING-04).
+      const requestId = ++zoomRequestIdRef.current;
       const success = await applyCameraZoom(stream, rounded);
-      if (success) {
+      if (success && requestId === zoomRequestIdRef.current) {
         setZoomState(rounded);
       }
       return success;

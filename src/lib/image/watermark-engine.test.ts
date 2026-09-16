@@ -179,4 +179,67 @@ describe("renderWatermark", () => {
     expect(addressLine!.endsWith("...")).toBe(true);
     expect(addressLine!.length).toBeLessThan(longAddressData.snapshot.address!.length);
   });
+
+  it("menggambar mapThumbnailImage & attribution provider sebagai elemen terpisah bila mapThumbnail aktif", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const mockMapImage = { kind: "static-map" };
+    const dataWithMap: WatermarkData = {
+      snapshot: SAMPLE_DATA.snapshot,
+      providerAttribution: "© LocationIQ",
+    };
+    const settings = createDefaultTemplate({
+      visibleFields: { ...createDefaultTemplate().visibleFields, mapThumbnail: true },
+    });
+
+    const result = await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: dataWithMap,
+      settings,
+      canvasFactory: () => canvas,
+      mapThumbnailImage: mockMapImage,
+    });
+
+    expect(result.status).toBe("success");
+    // Map thumbnail digambar sebagai drawImage terpisah (bukan bagian dari teks).
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      mockMapImage,
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    );
+    // Attribution provider digambar sebagai baris teks tersendiri, tidak boleh hilang.
+    const renderedTexts = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map(
+      (call) => call[0] as string,
+    );
+    expect(renderedTexts.some((text) => text.includes("LocationIQ"))).toBe(true);
+  });
+
+  it("tidak menggambar map thumbnail bila visibleFields.mapThumbnail nonaktif meski image disediakan", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const mockMapImage = { kind: "static-map" };
+    const settings = createDefaultTemplate({
+      visibleFields: { ...createDefaultTemplate().visibleFields, mapThumbnail: false },
+    });
+
+    await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings,
+      canvasFactory: () => canvas,
+      mapThumbnailImage: mockMapImage,
+    });
+
+    expect(ctx.drawImage).not.toHaveBeenCalledWith(
+      mockMapImage,
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
 });

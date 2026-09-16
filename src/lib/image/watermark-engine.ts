@@ -62,6 +62,8 @@ export interface RenderWatermarkOptions {
   outputType?: string;
   outputQuality?: number;
   logoImage?: CanvasImageSourceLike;
+  /** Gambar static map thumbnail yang sudah di-load, dirender sebagai elemen terpisah (rules #6.4). */
+  mapThumbnailImage?: CanvasImageSourceLike;
 }
 
 const LINE_HEIGHT_MULTIPLIER = 1.4;
@@ -81,6 +83,7 @@ export function renderWatermark(options: RenderWatermarkOptions): Promise<Waterm
     outputType = "image/jpeg",
     outputQuality = 0.92,
     logoImage,
+    mapThumbnailImage,
   } = options;
 
   const { width, height } = clampOutputDimensions(sourceWidth, sourceHeight);
@@ -95,7 +98,7 @@ export function renderWatermark(options: RenderWatermarkOptions): Promise<Waterm
   }
 
   ctx.drawImage(sourceImage, 0, 0, width, height);
-  drawWatermarkPanel(ctx, width, height, data, settings, logoImage);
+  drawWatermarkPanel(ctx, width, height, data, settings, logoImage, mapThumbnailImage);
 
   return new Promise((resolve) => {
     try {
@@ -156,9 +159,13 @@ function drawWatermarkPanel(
   data: WatermarkData,
   settings: WatermarkVisualSettings,
   logoImage?: CanvasImageSourceLike,
+  mapThumbnailImage?: CanvasImageSourceLike,
 ): void {
   const lines = buildWatermarkTextLines(data, settings);
-  if (lines.length === 0) return;
+  const hasMap = Boolean(
+    mapThumbnailImage && settings.visibleFields.mapThumbnail && settings.mapThumbnailSizePx > 0,
+  );
+  if (lines.length === 0 && !hasMap) return;
 
   // Skala proporsional berbasis resolusi canvas terhadap 1080px (standar portrait modern)
   const scale = Math.max(0.7, Math.min(2.5, canvasWidth / 1080));
@@ -167,13 +174,24 @@ function drawWatermarkPanel(
   const spacing = Math.round(settings.spacingPx * scale);
   const lineHeight = Math.round(fontSize * LINE_HEIGHT_MULTIPLIER);
   const stripeWidth = Math.max(4, Math.round(5 * scale));
+  const attributionFontSize = Math.max(9, Math.round(fontSize * 0.65));
 
   // Logo size jika logoImage disediakan
   const hasLogo = Boolean(logoImage && settings.visibleFields.branding);
   const logoSize = hasLogo ? Math.round(fontSize * 2.4) : 0;
   const contentLeftOffset = hasLogo ? logoSize + spacing * 2 : 0;
 
-  const panelHeight = margin * 2 + Math.max(lines.length * lineHeight, logoSize);
+  // Map thumbnail + attribution adalah elemen TERPISAH di sisi kanan panel
+  // (rules #6.4). Attribution digambar di bawah map, tidak pernah tertutup
+  // elemen lain (rules #6.5) karena tingginya sudah dihitung ke panelHeight.
+  const mapSize = hasMap ? Math.round(settings.mapThumbnailSizePx * scale) : 0;
+  const attributionText = hasMap ? data.providerAttribution ?? "© LocationIQ" : "";
+  const mapBlockHeight = hasMap ? mapSize + 4 + attributionFontSize : 0;
+  const mapBlockWidth = hasMap ? mapSize : 0;
+  const contentRightReserve = hasMap ? mapBlockWidth + spacing : 0;
+
+  const textBlockHeight = lines.length * lineHeight;
+  const panelHeight = margin * 2 + Math.max(textBlockHeight, logoSize, mapBlockHeight);
   const panelY = settings.position === "bottom" ? canvasHeight - panelHeight - margin : margin;
 
   const panelX = margin;
@@ -210,8 +228,9 @@ function drawWatermarkPanel(
   lines.forEach((line, index) => {
     const textX = panelX + stripeWidth + spacing + contentLeftOffset;
     const textY = panelY + margin + index * lineHeight;
-    // Batasi lebar teks agar tidak overflow keluar panel/tepi foto (rules #6.8).
-    const maxTextWidth = panelX + panelWidth - textX - spacing;
+    // Batasi lebar teks agar tidak overflow keluar panel/tepi foto, dan agar
+    // tidak tertimpa blok map thumbnail di sisi kanan (rules #6.4, #6.8).
+    const maxTextWidth = panelX + panelWidth - contentRightReserve - textX - spacing;
     const renderedText = truncateTextToWidth(ctx, line.text, maxTextWidth);
 
     // Pewarnaan teks berdasarkan kategori semantik baris (bukan menebak dari
@@ -234,4 +253,28 @@ function drawWatermarkPanel(
     ctx.fillText(renderedText, textX, textY);
   });
   ctx.restore();
+
+  // 5. Gambar map thumbnail + attribution provider sebagai elemen terpisah (rules #6.4-6.5)
+  if (hasMap && mapThumbnailImage) {
+    const mapX = panelX + panelWidth - margin - mapBlockWidth;
+    const mapY = panelY + margin;
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.drawImage(mapThumbnailImage, mapX, mapY, mapSize, mapSize);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.font = `${attributionFontSize}px sans-serif`;
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#94a3b8";
+    const attributionMaxWidth = mapSize;
+    ctx.fillText(
+      truncateTextToWidth(ctx, attributionText, attributionMaxWidth),
+      mapX,
+      mapY + mapSize + 4,
+    );
+    ctx.restore();
+  }
 }

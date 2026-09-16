@@ -22,6 +22,29 @@ function getLocalDevOrigins(): string[] {
   return Array.from(origins);
 }
 
+/**
+ * Content-Security-Policy produksi (audit finding F-03).
+ * 'unsafe-inline' pada script-src WAJIB dipertahankan karena Next.js App
+ * Router menyisipkan inline <script> untuk RSC streaming payload
+ * (`self.__next_f.push(...)`) — tanpa itu aplikasi akan blank/error di
+ * production. Perlindungan utama CSP ini ada pada connect-src: fetch/XHR
+ * hanya diizinkan ke origin sendiri + LocationIQ, sehingga exfiltrasi data
+ * ke domain lain (bila suatu saat terjadi XSS) tetap terblokir browser.
+ */
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://us1.locationiq.com https://maps.locationiq.com",
+  "media-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: getLocalDevOrigins(),
   async headers() {
@@ -44,6 +67,10 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(self), geolocation=(self), microphone=()",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: CONTENT_SECURITY_POLICY,
           },
         ],
       },

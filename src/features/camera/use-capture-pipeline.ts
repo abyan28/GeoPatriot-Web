@@ -7,8 +7,12 @@ import type { WatermarkVisualSettings } from "@/types/watermark";
 import { captureVideoFrame } from "@/lib/image/frame-capture";
 import { renderWatermark } from "@/lib/image/watermark-engine";
 import { createDefaultTemplate } from "@/lib/image/templates";
+import { loadImageFromUrl } from "@/lib/browser/load-image";
 import { addPhoto, listPhotosBySession } from "@/lib/storage/photo-repository";
 import { createSession, listSessions } from "@/lib/storage/session-repository";
+
+/** Attribution provider peta yang wajib ditampilkan bila map thumbnail dirender (rules #6.5). */
+const MAP_PROVIDER_ATTRIBUTION = "© LocationIQ";
 
 export interface CaptureResult {
   status: "success" | "error";
@@ -21,6 +25,8 @@ export interface UseCapturePipelineParams {
   isCameraReady: boolean;
   watermarkSettings?: WatermarkVisualSettings;
   createSnapshot: () => MetadataSnapshot;
+  /** Object URL static map thumbnail terbaru dari useGeolocation, atau null bila belum tersedia. */
+  mapThumbnailUrl?: string | null;
 }
 
 export interface UseCapturePipelineReturn {
@@ -44,6 +50,7 @@ export function useCapturePipeline({
   isCameraReady,
   watermarkSettings = createDefaultTemplate(),
   createSnapshot,
+  mapThumbnailUrl = null,
 }: UseCapturePipelineParams): UseCapturePipelineReturn {
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -252,18 +259,30 @@ export function useCapturePipeline({
           sourceImageSource = videoRef.current;
         }
 
+        // Muat map thumbnail (blob object URL lokal dari useGeolocation) menjadi
+        // image source Canvas. Kegagalan/ketidaktersediaan TIDAK menggagalkan
+        // capture — watermark tetap dirender tanpa map (rules #6.6).
+        let mapThumbnailImage: HTMLImageElement | undefined;
+        if (watermarkSettings.visibleFields.mapThumbnail && mapThumbnailUrl) {
+          try {
+            mapThumbnailImage = await loadImageFromUrl(mapThumbnailUrl);
+          } catch {
+            mapThumbnailImage = undefined;
+          }
+        }
+
         const watermarkResult = await renderWatermark({
           sourceImage: sourceImageSource,
           sourceWidth: frameResult.width || 1080,
           sourceHeight: frameResult.height || 1920,
-          // Catatan: mapThumbnailUrl/providerAttribution belum diwire ke provider
-          // peta manapun (drawWatermarkPanel juga belum merender field ini) —
-          // lihat agents/tasklist.md untuk status fitur map thumbnail watermark.
           data: {
             snapshot,
+            mapThumbnailUrl: mapThumbnailImage && mapThumbnailUrl ? mapThumbnailUrl : undefined,
+            providerAttribution: MAP_PROVIDER_ATTRIBUTION,
           },
           settings: watermarkSettings,
           logoImage: logoImageRef.current || undefined,
+          mapThumbnailImage,
         });
 
         if (watermarkResult.status === "success") {
@@ -314,7 +333,14 @@ export function useCapturePipeline({
       isCapturingRef.current = false;
       setIsCapturing(false);
     }
-  }, [isCameraReady, videoRef, createSnapshot, watermarkSettings, ensureActiveSession]);
+  }, [
+    isCameraReady,
+    videoRef,
+    createSnapshot,
+    watermarkSettings,
+    ensureActiveSession,
+    mapThumbnailUrl,
+  ]);
 
   return {
     capturePhoto,

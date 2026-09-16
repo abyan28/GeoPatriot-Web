@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useCamera } from "./use-camera";
+import { getCameraCurrentZoom } from "@/lib/browser/camera";
 import { CameraViewport } from "./camera-viewport";
 import { CameraControls } from "./camera-controls";
 import { useCapturePipeline } from "./use-capture-pipeline";
@@ -30,6 +31,7 @@ export function CameraScreen() {
     facingMode,
     errorMessage: cameraError,
     videoRef,
+    stream: cameraStream,
     zoom,
     zoomCapabilities,
     zoomPresets,
@@ -38,13 +40,21 @@ export function CameraScreen() {
     toggleFacingMode,
   } = useCamera();
 
+  const appSettings = useAppSettings();
+  const { watermarkSettings } = appSettings;
+
   const {
     status: geoStatus,
     coordinate: geoCoord,
     quality: geoQuality,
     addressInfo: geoAddress,
+    mapThumbnailUrl,
     refresh: refreshGps,
-  } = useGeolocation({ autoStart: true, resolveAddress: true });
+  } = useGeolocation({
+    autoStart: true,
+    resolveAddress: true,
+    resolveMapThumbnail: watermarkSettings.visibleFields.mapThumbnail,
+  });
 
   const {
     locationMode,
@@ -60,9 +70,6 @@ export function CameraScreen() {
     createSnapshot,
     resetToDefaults,
   } = useMetadataConfig();
-
-  const appSettings = useAppSettings();
-  const { watermarkSettings } = appSettings;
 
   const {
     capturePhoto,
@@ -80,8 +87,12 @@ export function CameraScreen() {
         gpsCoordinate: geoCoord,
         gpsQuality: geoQuality,
         gpsAddressInfo: geoAddress,
-        zoom,
+        // Baca zoom aktual dari hardware track (bukan React state UI) tepat di
+        // detik shutter, agar tidak stale terhadap gestur pinch yang baru
+        // selesai (audit finding FINDING-05).
+        zoom: getCameraCurrentZoom(cameraStream),
       }),
+    mapThumbnailUrl,
   });
 
   const { showToast } = useToast();

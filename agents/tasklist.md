@@ -256,7 +256,7 @@ Audit independen (5 domain) dan remediasi P0/P1/sebagian P2 dikerjakan oleh Clau
   - Fungsional: Kamera, camera zoom, live GPS tracking, manual fallback, watermark canvas rendering, multi-photo sessions, galeri, ZIP download, PWA offline, pengaturan, diagnostik sistem.
   - Privasi & Keamanan: Local-first 100% tanpa upload server (Rules #1.1 & #8.1), opsi pembersihan aman foto terunduh (Rules #10.5), isolasi cache offline tanpa data lokasi pribadi (Rules #14.3).
   - Kompatibilitas: **KOREKSI** — sebelumnya diklaim "Android Chrome, iOS Safari, desktop teruji". Audit independen (lihat di bawah) menemukan klaim ini HANYA didukung unit test simulasi API di Node (`mobile-compatibility.test.ts`), BUKAN pengujian di device/browser fisik. Status sebenarnya: **NOT VERIFIED on real device**.
-  - Kualitas Kode: 84/84 unit & integration test lulus (22 test suites), 0 error TypeScript, 0 warning ESLint, Turbopack production build sukses (angka naik dari 83 setelah audit menambah 1 regression test).
+  - Kualitas Kode: 92/92 unit & integration test lulus (26 test suites), 0 error TypeScript, 0 warning ESLint, Turbopack production build sukses (naik dari 83 setelah audit & remediasi lanjutan menambah regression test untuk watermark truncation, map thumbnail, ZIP-failure-path, dan cascade-delete via hook).
 
 ## Ringkasan Checkpoint Akhir (Direvisi Setelah Audit)
 
@@ -295,18 +295,30 @@ tersedia di riwayat percakapan sesi ini. Ringkasan hasil dan remediasi yang SUDA
 - [✓] ✅ **P4** — Touch target varian `Button` `sm` 40px & tombol Settings header 32px, di bawah standar 44px. Dinaikkan ke 44px.
 - [✓] ✅ Dead/misleading `providerAttribution: "GeoPatriot"` (field tidak pernah dibaca rendering, membingungkan). Dihapus dari `use-capture-pipeline.ts`.
 
+### Lanjutan Remediasi (Sesi ke-2 — semua item non-device dari sesi pertama)
+
+- [✓] ✅ Fitur **map thumbnail & provider attribution watermark** — sebelumnya dead feature, sekarang benar-benar diimplementasikan dan diuji.
+  - `src/features/location/use-geolocation.ts`: opsi `resolveMapThumbnail`, fetch static map via `getMapProvider().getStaticMap()` dengan cache key + staleness guard + object URL lifecycle (revoke lama saat diganti/unmount) yang sama pola dengan reverse geocoding.
+  - `src/lib/browser/load-image.ts` (baru, + test): helper `loadImageFromUrl()` mengonversi object URL jadi `HTMLImageElement` untuk `drawImage`, dengan timeout aman.
+  - `src/lib/image/watermark-engine.ts`: `drawWatermarkPanel` sekarang benar-benar menggambar `mapThumbnailImage` sebagai blok terpisah di sisi kanan panel + attribution provider (`© LocationIQ`) di bawahnya, tidak pernah tertutup elemen lain (rules #6.4-6.5). 2 regression test baru (render map, dan TIDAK render saat `visibleFields.mapThumbnail` nonaktif meski image tersedia).
+  - `src/features/camera/use-capture-pipeline.ts`: wiring `mapThumbnailUrl` -> `loadImageFromUrl` -> `renderWatermark`, gagal secara graceful (rules #6.6) tanpa menggagalkan capture.
+  - `src/features/camera/camera-screen.tsx`: `useAppSettings()` dipindah sebelum `useGeolocation()` agar `resolveMapThumbnail` bisa mengikuti toggle `watermarkSettings.visibleFields.mapThumbnail` (tidak fetch map bila fitur nonaktif, menghemat kuota LocationIQ).
+- [✓] ✅ Nilai `zoom` di `MetadataSnapshot` sekarang dibaca dari `getCameraCurrentZoom(cameraStream)` (ground truth hardware) tepat di titik `createSnapshot()`, bukan dari React state UI yang bisa stale. Diperbaiki di `camera-screen.tsx`.
+- [✓] ✅ Pinch-to-zoom di-throttle via `requestAnimationFrame` (hanya nilai terbaru per frame yang dikirim ke `onZoomChange`) di `camera-viewport.tsx`; ditambah staleness guard `zoomRequestIdRef` di `use-camera.ts` agar hasil `applyConstraints()` basi tidak menimpa state zoom yang lebih baru.
+- [✓] ✅ Test coverage gap ZIP-failure-path: `src/lib/downloads/zip-download-failure.test.ts` (mock `fflate.zip()` reject) dan `src/features/downloads/use-download-manager-zip-failure.test.ts` (verifikasi `downloaded` tetap `false` & anchor tidak pernah di-klik saat ZIP gagal).
+- [✓] ✅ Test coverage gap cascade-delete via hook produksi: install `jsdom` + `@testing-library/react`, dibuat `src/features/sessions/use-session-gallery.hook.test.ts` (`// @vitest-environment jsdom` per-file) yang memanggil `clearCurrentSession()` dan `deleteSelectedPhotos()` sungguhan lewat `renderHook`, bukan hanya repository terisolasi.
+- [✓] ✅ CSP header ditambahkan di `next.config.ts` (`script-src 'self' 'unsafe-inline'` — wajib untuk RSC streaming inline script Next.js App Router; `connect-src 'self' + LocationIQ` sebagai perlindungan utama exfiltrasi). **CATATAN: belum diverifikasi di browser nyata** — build produksi lulus tapi CSP violation hanya akan terlihat di console browser sungguhan.
+
+Progress non-device sekarang 100% dari daftar temuan audit — sisa yang tercatat di bawah murni butuh
+keputusan produk/effort besar (bukan bug), atau memang harus device/browser nyata.
+
 ### Belum diperbaiki — butuh keputusan/effort lebih besar (tercatat, JANGAN diklaim selesai)
-- [ ] Fitur **map thumbnail & provider attribution watermark** (`mapThumbnailUrl`, `getMapProvider()`) lengkap di types/template tapi **tidak pernah benar-benar dirender** — dead feature. Perlu implementasi penuh (fetch static map, drawImage ke canvas, object URL cleanup) atau nonaktifkan eksplisit dari UI bila tidak jadi prioritas MVP.
-- [ ] Pinch-to-zoom tidak di-throttle (banyak `applyConstraints()` bertumpuk tanpa sequencing) — risiko nilai zoom di metadata tidak presisi saat capture tepat di akhir gestur.
-- [ ] Nilai `zoom` di `MetadataSnapshot` diambil dari React state UI, bukan `getCameraCurrentZoom(stream)` (ground truth hardware) di titik capture.
-- [ ] Test coverage gap: cascade-delete belum diuji lewat hook produksi (`clearCurrentSession()`), ZIP-failure-path (`fflate.zip()` reject) belum pernah disimulasikan di test.
-- [ ] ZIP compression berjalan di main thread tanpa Web Worker — potensi UI freeze untuk sesi besar (50-200 foto ukuran asli).
-- [ ] Tidak ada CSP header (`next.config.ts`) — hardening, belum dieksekusi karena butuh verifikasi browser nyata agar tidak memblokir Next.js/font/inline style.
-- [ ] Object URL `getStaticMap()` di `locationiq-map-provider.ts` tidak punya revoke pasangan — saat ini dead code (tidak dipanggil), jadi tidak berdampak, tapi WAJIB diperbaiki bersamaan bila fitur map thumbnail diimplementasikan.
-- [ ] Provenance aset `public/app-icon.png` (1024x1024, 619KB) perlu diverifikasi — riwayat git menyebut "Ministry of Transmigration" branding sebelum di-generalisasi.
+- [ ] ZIP compression berjalan di main thread tanpa Web Worker — potensi UI freeze untuk sesi besar (50-200 foto ukuran asli). Sengaja TIDAK dieksekusi sesi ini: memindahkan fflate ke Web Worker butuh setup bundler worker (`new Worker(new URL(...))`) yang perilakunya hanya bisa benar-benar divalidasi di browser nyata — risiko regresi diam-diam tanpa device untuk verifikasi lebih besar daripada manfaatnya saat ini.
+- [ ] Provenance aset `public/app-icon.png` (1024x1024, 619KB) perlu diverifikasi — riwayat git menyebut "Ministry of Transmigration" branding sebelum di-generalisasi. Ini bukan bug kode, perlu keputusan/verifikasi lisensi dari pemilik proyek.
 
 ### WAJIB dilakukan sebelum klaim "production-ready" (tidak bisa diselesaikan lewat kode)
-- [ ] **Verifikasi real-device**: Android Chrome & iPhone Safari fisik — camera, zoom, GPS, watermark visual (termasuk overflow), PWA install, offline. Tasklist Phase 15-16 sebelumnya HANYA didukung unit test simulasi, bukan device nyata.
+- [ ] **Verifikasi real-device**: Android Chrome & iPhone Safari fisik — camera, zoom, GPS, watermark visual (termasuk overflow & map thumbnail baru), PWA install, offline. Tasklist Phase 15-16 sebelumnya HANYA didukung unit test simulasi, bukan device nyata.
 - [ ] **Verifikasi performa nyata**: benchmark 10-200 foto ukuran asli (300KB-3MB) di browser sungguhan — benchmark sebelumnya (`performance.benchmark.test.ts`) sintetis (fake-indexeddb, Blob 2-4KB).
+- [ ] **Verifikasi CSP di browser nyata**: buka DevTools console setelah deploy, pastikan tidak ada CSP violation yang memblokir hydration/font/style Next.js, dan LocationIQ tetap bisa diakses.
 - [ ] Verifikasi HTTPS actual pada domain Vercel production setelah deploy.
 

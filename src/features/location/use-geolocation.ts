@@ -9,7 +9,7 @@ import {
   type GeolocationStatus,
   type GeolocationReadResult,
 } from "@/lib/browser/geolocation";
-import { getGeocodingProvider } from "@/lib/providers/provider-factory";
+import { getGeocodingProvider, getMapProvider } from "@/lib/providers/provider-factory";
 
 export interface AddressInfo {
   locationName?: string;
@@ -21,7 +21,16 @@ export interface UseGeolocationOptions {
   autoStart?: boolean;
   /** Mengaktifkan reverse geocoding otomatis untuk mendapatkan nama lokasi/alamat (default: true). */
   resolveAddress?: boolean;
+  /**
+   * Mengaktifkan pengambilan static map thumbnail otomatis (default: false).
+   * Dimatikan secara default agar tidak menambah beban kuota LocationIQ saat
+   * template watermark aktif tidak menampilkan map thumbnail (rules #12.6-12.7).
+   */
+  resolveMapThumbnail?: boolean;
 }
+
+/** Ukuran & zoom static map thumbnail yang diminta ke MapProvider. */
+const MAP_THUMBNAIL_OPTIONS = { widthPx: 240, heightPx: 240, zoom: 16 };
 
 export interface UseGeolocationReturn {
   status: GeolocationStatus;
@@ -31,6 +40,8 @@ export interface UseGeolocationReturn {
   isWatching: boolean;
   addressInfo: AddressInfo | null;
   isResolvingAddress: boolean;
+  /** Object URL map thumbnail terbaru, atau null bila belum tersedia/gagal (rules #6.6: non-fatal). */
+  mapThumbnailUrl: string | null;
   startWatching: () => void;
   stopWatching: () => void;
   refresh: () => Promise<GeolocationReadResult>;
@@ -47,6 +58,7 @@ export interface UseGeolocationReturn {
 export function useGeolocation({
   autoStart = true,
   resolveAddress = true,
+  resolveMapThumbnail = false,
 }: UseGeolocationOptions = {}): UseGeolocationReturn {
   const [status, setStatus] = useState<GeolocationStatus>(() => {
     if (!isGeolocationSupported()) return "unsupported";
@@ -63,6 +75,7 @@ export function useGeolocation({
   );
   const [addressInfo, setAddressInfo] = useState<AddressInfo | null>(null);
   const [isResolvingAddress, setIsResolvingAddress] = useState<boolean>(false);
+  const [mapThumbnailUrl, setMapThumbnailUrl] = useState<string | null>(null);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastResolvedKeyRef = useRef<string>("");
@@ -70,6 +83,11 @@ export function useGeolocation({
   // resolve setelah request yang lebih baru dikirim (mencegah race condition
   // di mana alamat lama menimpa alamat baru pada koordinat terkini).
   const geocodeRequestIdRef = useRef(0);
+  const lastMapKeyRef = useRef<string>("");
+  const mapRequestIdRef = useRef(0);
+  // Object URL blob map thumbnail aktif saat ini, disimpan di ref agar dapat
+  // di-revoke dengan aman sebelum diganti/di-unmount tanpa closure stale.
+  const currentMapObjectUrlRef = useRef<string | null>(null);
 
   /**
    * Mengambil alamat reverse geocoding dari koordinat bila berubah secara signifikan.
@@ -113,6 +131,50 @@ export function useGeolocation({
   );
 
   /**
+   * Mengambil static map thumbnail dari koordinat bila berubah secara signifikan.
+   * Kegagalan/keterlambatan tidak pernah menjadi fatal (rules #6.6) — hanya
+   * mempertahankan thumbnail terakhir yang berhasil, atau null bila belum ada.
+   */
+  const resolveMapThumbnailImage = useCallback(
+    async (lat: number, lon: number) => {
+      if (!resolveMapThumbnail) return;
+
+      const cacheKey = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+      if (lastMapKeyRef.current === cacheKey) return;
+
+      const requestId = ++mapRequestIdRef.current;
+
+      try {
+        const mapProvider = getMapProvider();
+        const result = await mapProvider.getStaticMap(lat, lon, MAP_THUMBNAIL_OPTIONS);
+
+        // Abaikan hasil basi bila sudah ada request map thumbnail yang lebih baru.
+        if (requestId !== mapRequestIdRef.current) {
+          if (result.status === "success") {
+            URL.revokeObjectURL(result.data);
+          }
+          return;
+        }
+
+        if (result.status === "success") {
+          lastMapKeyRef.current = cacheKey;
+          // Revoke object URL lama SETELAH URL baru siap dipakai, agar tidak
+          // ada window di mana <img>/canvas yang masih memegang URL lama gagal.
+          const previousUrl = currentMapObjectUrlRef.current;
+          currentMapObjectUrlRef.current = result.data;
+          setMapThumbnailUrl(result.data);
+          if (previousUrl) {
+            URL.revokeObjectURL(previousUrl);
+          }
+        }
+      } catch {
+        // Fallback aman: kegagalan map thumbnail tidak boleh menggagalkan status lokasi
+      }
+    },
+    [resolveMapThumbnail],
+  );
+
+  /**
    * Handler pembaruan koordinat dari Geolocation API.
    */
   const handlePositionUpdate = useCallback(
@@ -124,6 +186,7 @@ export function useGeolocation({
         setQuality(result.quality ?? null);
         setErrorMessage(null);
         void resolveLocationAddress(result.coordinate.latitude, result.coordinate.longitude);
+        void resolveMapThumbnailImage(result.coordinate.latitude, result.coordinate.longitude);
       } else if (
         result.status === "denied" ||
         result.status === "error" ||
@@ -132,7 +195,7 @@ export function useGeolocation({
         setErrorMessage(result.errorMessage ?? "Gagal memperoleh lokasi.");
       }
     },
-    [resolveLocationAddress],
+    [resolveLocationAddress, resolveMapThumbnailImage],
   );
 
   /**
@@ -200,6 +263,16 @@ export function useGeolocation({
     };
   }, [autoStart, handlePositionUpdate]);
 
+  // Revoke object URL map thumbnail terakhir saat hook di-unmount agar tidak leak.
+  useEffect(() => {
+    return () => {
+      if (currentMapObjectUrlRef.current) {
+        URL.revokeObjectURL(currentMapObjectUrlRef.current);
+        currentMapObjectUrlRef.current = null;
+      }
+    };
+  }, []);
+
   return {
     status,
     coordinate,
@@ -208,6 +281,7 @@ export function useGeolocation({
     isWatching,
     addressInfo,
     isResolvingAddress,
+    mapThumbnailUrl,
     startWatching,
     stopWatching,
     refresh,
