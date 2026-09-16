@@ -5,7 +5,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Komponen Card bergaya Deep Navy Glassmorphism Kementerian Transmigrasi untuk overlay kamera & panel.
+ * Komponen Card bergaya Deep Navy Glassmorphism untuk overlay kamera & panel.
  */
 export function Card({ variant = "glass", className = "", children, ...props }: CardProps) {
   const variantClasses = {

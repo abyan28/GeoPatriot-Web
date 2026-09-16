@@ -9,7 +9,7 @@ import { GpsQualityChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 
 /**
- * Komponen layar utama Kamera GeoPatriot Web dengan identitas visual resmi Kementerian Transmigrasi RI.
+ * Komponen layar utama Kamera GeoPatriot Web.
  * Menyajikan live viewport, top status header, dan bottom controls.
  */
 export function CameraScreen() {
@@ -37,13 +37,13 @@ export function CameraScreen() {
 
   return (
     <div className="relative w-full h-[100dvh] max-w-md mx-auto bg-[#08111d] flex flex-col justify-between overflow-hidden shadow-2xl">
-      {/* Top Header Bar: Status & Branding Kementerian Transmigrasi */}
+      {/* Top Header Bar: Status & Branding GeoPatriot */}
       <header className="absolute top-0 inset-x-0 z-30 pt-4 pb-3 px-4 bg-gradient-to-b from-[#08111d]/90 via-[#08111d]/50 to-transparent flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-2.5">
           <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-lg border border-[#c5984f]/60 bg-[#08111d] flex items-center justify-center shrink-0">
             <Image
               src="/app-icon.png"
-              alt="Logo GeoPatriot Kementerian Transmigrasi"
+              alt="Logo GeoPatriot Web"
               width={36}
               height={36}
               className="object-cover"
@@ -55,7 +55,7 @@ export function CameraScreen() {
               GeoPatriot
             </span>
             <span className="text-[10px] font-semibold text-[#dcab55] tracking-tight leading-none drop-shadow">
-              Kementerian Transmigrasi RI
+              GPS Camera
             </span>
           </div>
         </div>
@@ -81,7 +81,7 @@ export function CameraScreen() {
             <div className="p-3 rounded-xl bg-[#0e2035]/85 backdrop-blur-md border border-[#2f6d8b]/30 text-[11px] text-zinc-200 leading-relaxed max-w-xs shadow-xl">
               <p className="font-semibold text-white flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#c5984f]" />
-                GeoPatriot • Kemen Transmigrasi RI
+                GeoPatriot Web
               </p>
               <p className="text-[#94a3b8] text-[10px] mt-0.5">
                 Watermark live preview akan aktif di tahap berikutnya.

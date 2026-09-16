@@ -11,8 +11,8 @@ export interface CameraPermissionFallbackProps {
 }
 
 /**
- * Komponen fallback permission kamera dengan panduan jelas dan ramah pengguna
- * berlandaskan identitas visual resmi Kementerian Transmigrasi RI.
+ * Komponen fallback permission kamera dengan panduan jelas dan ramah pengguna.
+ * Sesuai Rules #3.2 (permission on demand) dan PRD #22 (Camera denied handling).
  */
 export function CameraPermissionFallback({
   status,
@@ -166,7 +166,7 @@ export function CameraPermissionFallback({
       <div className="relative w-24 h-24 rounded-3xl p-1 bg-gradient-to-b from-[#c5984f]/40 to-[#0e2b47]/80 border border-[#c5984f]/60 shadow-2xl flex items-center justify-center mb-5">
         <Image
           src="/app-icon.png"
-          alt="Logo GeoPatriot Kementerian Transmigrasi"
+          alt="Logo GeoPatriot Web"
           width={88}
           height={88}
           className="object-contain drop-shadow-xl"
@@ -178,11 +178,11 @@ export function CameraPermissionFallback({
         GeoPatriot Web
       </h1>
       <p className="text-xs font-semibold text-[#dcab55] mt-1 tracking-wide">
-        Kementerian Transmigrasi Republik Indonesia
+        Kamera GPS & Dokumentasi Lapangan
       </p>
       <p className="text-xs text-[#94a3b8] mt-2 max-w-xs leading-relaxed">
-        Kamera GPS & Dokumentasi Lapangan dengan watermark lokasi dan waktu terverifikasi.
-        Sepenuhnya berjalan lokal di browser Anda.
+        Ambil foto dokumentasi dengan watermark lokasi dan waktu terverifikasi langsung dari browser
+        tanpa upload ke server.
       </p>
 
       <div className="mt-8">

@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GeoPatriot Web — Kamera GPS Kementerian Transmigrasi RI",
+  title: "GeoPatriot Web — Kamera GPS & Dokumentasi Lapangan",
   description:
-    "Kamera GPS & Dokumentasi Lapangan Resmi dengan watermark lokasi dan waktu terintegrasi. Local-first, aman, dan tanpa upload foto ke server.",
+    "Aplikasi kamera GPS dengan watermark lokasi dan waktu terintegrasi. Local-first, aman, dan tanpa upload foto ke server.",
   icons: {
     icon: "/app-icon.png",
     apple: "/app-icon.png",

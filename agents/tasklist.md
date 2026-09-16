@@ -77,15 +77,15 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
   - Dibuat: `src/components/ui/index.ts` (Barrel export UI)
   - Diperbarui: `src/app/globals.css` (Dark theme, overscroll-y none, touch tap highlight transparent)
   - Diperbarui: `src/app/layout.tsx` (Mobile viewport cover, tema gelap, metadata GeoPatriot, ToastProvider)
-- [✓] ✅ Task 1.3 - Integrasi Palet Warna & Identitas Visual Kementerian Transmigrasi 2024 `[Sedang]` (Selesai)
-  - Disalin: `public/app-icon.png` dan `public/logo-kementerian.webp` dari referensi
+- [✓] ✅ Task 1.3 - Integrasi Palet Warna Deep Navy & Golden Ochre serta Identitas Visual GeoPatriot `[Sedang]` (Selesai)
+  - Disalin: `public/app-icon.png` (Logo resmi aplikasi: GPS pin + aperture)
   - Diperbarui: `src/app/globals.css` (Mendaftarkan CSS variables Deep Navy `#08111d`/`#0e2035`, Golden Ochre `#c5984f`, Muted Teal `#2f6d8b`)
-  - Diperbarui: `src/app/layout.tsx` (Metadata title dan icon kementerian, themeColor `#08111d`)
+  - Diperbarui: `src/app/layout.tsx` (Metadata title "GeoPatriot Web", icon `app-icon.png`, themeColor `#08111d`)
   - Diperbarui: `src/components/ui/Button.tsx` (Varian primary Warm Gold `#c5984f`, secondary Deep Navy, glassmorphism)
   - Diperbarui: `src/components/ui/StatusChip.tsx` (Pewarnaan Muted Teal dan Warm Gold yang serasi)
   - Diperbarui: `src/components/ui/Card.tsx` & `BottomSheet.tsx` (Gaya Deep Navy Glassmorphism)
-  - Diperbarui: `src/features/camera/camera-screen.tsx` (Header menampilkan logo resmi `app-icon.png` dan label "Kementerian Transmigrasi RI")
-  - Diperbarui: `src/features/camera/camera-permission-fallback.tsx` (Welcome screen menampilkan emblem logo resmi dengan glow hangat)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Header menampilkan logo resmi `app-icon.png` dan judul "GeoPatriot" / "GPS Camera")
+  - Diperbarui: `src/features/camera/camera-permission-fallback.tsx` (Layar sambutan menampilkan emblem logo resmi GeoPatriot dengan glow hangat)
 
 ## Phase 2 - Camera Proof of Concept & Viewfinder
 
@@ -125,6 +125,6 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
 
 ## Ringkasan Checkpoint Saat Ini
 
-Identitas visual resmi Kementerian Transmigrasi 2024 (Deep Navy, Golden Ochre, Muted Teal) telah selesai diintegrasikan secara menyeluruh pada aset, token CSS, komponen UI, top header, dan layar sambutan kamera.
-Aplikasi kini tampil sangat kredibel dan berkarakter dinas resmi, bebas error build, typecheck, dan lint.
+Palet warna elegan (Deep Navy, Golden Ochre, Muted Teal) telah selesai diintegrasikan secara menyeluruh pada aset, token CSS, komponen UI, top header, dan layar sambutan kamera dengan branding mandiri GeoPatriot Web.
+Aplikasi kini tampil sangat profesional, kredibel, dan berkarakter kuat, bebas error build, typecheck, dan lint.
 Selanjutnya siap melanjutkan ke **Phase 3 (Geolocation GPS Integration)** dan **Phase 4 (Metadata Editor Sheet)**.

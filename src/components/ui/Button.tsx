@@ -14,7 +14,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 /**
- * Komponen tombol modular GeoPatriot Web dengan palet warna resmi Kementerian Transmigrasi RI.
+ * Komponen tombol modular GeoPatriot Web dengan palet warna Deep Navy & Golden Ochre.
  * Memenuhi standar aksesibilitas touch target minimal 44x44px dan keyboard focus.
  */
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -43,7 +43,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       lg: "min-h-[56px] px-6 py-3 text-base rounded-2xl gap-2.5",
     };
 
-    // Varian visual tombol berakar dari palet Kementerian Transmigrasi 2024
+    // Varian visual tombol berakar dari palet Deep Navy & Golden Ochre
     const variantClasses: Record<ButtonVariant, string> = {
       primary:
         "bg-[#c5984f] hover:bg-[#dcab55] text-[#08111d] font-bold shadow-lg shadow-[#c5984f]/25",

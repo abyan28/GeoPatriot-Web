@@ -14,8 +14,8 @@ export interface StatusChipProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const TONE_CLASSES: Record<StatusTone, string> = {
   emerald: "bg-emerald-950/85 border-emerald-500/50 text-emerald-300",
-  sky: "bg-[#0b2436]/90 border-[#2f6d8b]/60 text-[#7ec7e8]", // Muted Teal Kemen Transmigrasi
-  amber: "bg-[#2b200c]/90 border-[#c5984f]/60 text-[#eac47a]", // Warm Gold Kemen Transmigrasi
+  sky: "bg-[#0b2436]/90 border-[#2f6d8b]/60 text-[#7ec7e8]", // Muted Teal
+  amber: "bg-[#2b200c]/90 border-[#c5984f]/60 text-[#eac47a]", // Warm Gold
   rose: "bg-rose-950/85 border-rose-500/50 text-rose-300",
   zinc: "bg-[#0e2035]/90 border-[#1a3c61]/70 text-[#94a3b8]", // Deep Navy
 };

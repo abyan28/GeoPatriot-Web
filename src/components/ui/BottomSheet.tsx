@@ -12,7 +12,7 @@ export interface BottomSheetProps {
 
 /**
  * BottomSheet drawer mobile-first untuk progressive disclosure (Rules #15.4)
- * dengan gaya Deep Navy resmi Kementerian Transmigrasi.
+ * dengan gaya Deep Navy & Golden Ochre.
  */
 export function BottomSheet({
   isOpen,
