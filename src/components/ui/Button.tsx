@@ -14,7 +14,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 /**
- * Komponen tombol modular GeoPatriot Web.
+ * Komponen tombol modular GeoPatriot Web dengan palet warna resmi Kementerian Transmigrasi RI.
  * Memenuhi standar aksesibilitas touch target minimal 44x44px dan keyboard focus.
  */
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -34,7 +34,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     // Penentuan kelas dasar touch & feedback
     const baseClasses =
-      "inline-flex items-center justify-center font-medium transition-all duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95";
+      "inline-flex items-center justify-center font-medium transition-all duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f] disabled:opacity-50 disabled:cursor-not-allowed active:scale-95";
 
     // Ukuran tombol (tinggi minimal 44px untuk touch target ramah ibu jari)
     const sizeClasses: Record<ButtonSize, string> = {
@@ -43,17 +43,18 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       lg: "min-h-[56px] px-6 py-3 text-base rounded-2xl gap-2.5",
     };
 
-    // Varian visual tombol
+    // Varian visual tombol berakar dari palet Kementerian Transmigrasi 2024
     const variantClasses: Record<ButtonVariant, string> = {
       primary:
-        "bg-amber-500 hover:bg-amber-400 text-black font-semibold shadow-md shadow-amber-500/20",
-      secondary: "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700/60",
-      glass: "bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/15",
+        "bg-[#c5984f] hover:bg-[#dcab55] text-[#08111d] font-bold shadow-lg shadow-[#c5984f]/25",
+      secondary: "bg-[#0e2035] hover:bg-[#152e4d] text-white border border-[#2f6d8b]/40",
+      glass:
+        "bg-[#08111d]/75 hover:bg-[#0e2035]/90 text-white backdrop-blur-md border border-[#2f6d8b]/30",
       ghost: "bg-transparent hover:bg-white/10 text-zinc-300 hover:text-white",
-      danger: "bg-red-600 hover:bg-red-500 text-white shadow-md shadow-red-600/20",
+      danger: "bg-red-700 hover:bg-red-600 text-white shadow-md shadow-red-700/20",
       shutter:
-        "w-20 h-20 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 backdrop-blur-sm p-1.5 shadow-xl active:scale-90 transition-transform flex items-center justify-center",
-      icon: "w-12 h-12 min-w-[48px] min-h-[48px] p-0 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur-md border border-white/10",
+        "w-20 h-20 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 backdrop-blur-sm p-1.5 shadow-2xl active:scale-90 transition-transform flex items-center justify-center",
+      icon: "w-12 h-12 min-w-[48px] min-h-[48px] p-0 rounded-full bg-[#0e2035]/80 hover:bg-[#152e4d] text-zinc-200 backdrop-blur-md border border-[#2f6d8b]/30",
     };
 
     // Tombol shutter khusus kamera
@@ -68,7 +69,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         >
           <span className="w-full h-full rounded-full bg-white transition-colors group-hover:bg-zinc-100 flex items-center justify-center">
             {isLoading ? (
-              <span className="w-6 h-6 border-3 border-zinc-400 border-t-zinc-800 rounded-full animate-spin" />
+              <span className="w-6 h-6 border-3 border-[#c5984f] border-t-[#08111d] rounded-full animate-spin" />
             ) : (
               children
             )}

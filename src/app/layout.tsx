@@ -14,13 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GeoPatriot Web — GPS Camera",
+  title: "GeoPatriot Web — Kamera GPS Kementerian Transmigrasi RI",
   description:
-    "Aplikasi kamera GPS dengan watermark lokasi dan waktu terintegrasi. Local-first, aman, dan tanpa upload foto ke server.",
+    "Kamera GPS & Dokumentasi Lapangan Resmi dengan watermark lokasi dan waktu terintegrasi. Local-first, aman, dan tanpa upload foto ke server.",
+  icons: {
+    icon: "/app-icon.png",
+    apple: "/app-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#08111d",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -33,11 +37,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="id"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-black text-white`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-[#08111d] text-white`}
     >
       <body
         suppressHydrationWarning
-        className="min-h-full h-full flex flex-col bg-black text-white overflow-x-hidden"
+        className="min-h-full h-full flex flex-col bg-[#08111d] text-white overflow-x-hidden"
       >
         <ToastProvider>{children}</ToastProvider>
       </body>

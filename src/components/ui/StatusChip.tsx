@@ -13,19 +13,19 @@ export interface StatusChipProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const TONE_CLASSES: Record<StatusTone, string> = {
-  emerald: "bg-emerald-950/80 border-emerald-500/50 text-emerald-300",
-  sky: "bg-sky-950/80 border-sky-500/50 text-sky-300",
-  amber: "bg-amber-950/80 border-amber-500/50 text-amber-300",
-  rose: "bg-rose-950/80 border-rose-500/50 text-rose-300",
-  zinc: "bg-zinc-900/80 border-zinc-700/60 text-zinc-300",
+  emerald: "bg-emerald-950/85 border-emerald-500/50 text-emerald-300",
+  sky: "bg-[#0b2436]/90 border-[#2f6d8b]/60 text-[#7ec7e8]", // Muted Teal Kemen Transmigrasi
+  amber: "bg-[#2b200c]/90 border-[#c5984f]/60 text-[#eac47a]", // Warm Gold Kemen Transmigrasi
+  rose: "bg-rose-950/85 border-rose-500/50 text-rose-300",
+  zinc: "bg-[#0e2035]/90 border-[#1a3c61]/70 text-[#94a3b8]", // Deep Navy
 };
 
 const DOT_CLASSES: Record<StatusTone, string> = {
   emerald: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]",
-  sky: "bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.6)]",
-  amber: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]",
+  sky: "bg-[#3e88ab] shadow-[0_0_8px_rgba(47,109,139,0.7)]",
+  amber: "bg-[#c5984f] shadow-[0_0_8px_rgba(197,152,79,0.7)]",
   rose: "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.6)]",
-  zinc: "bg-zinc-500",
+  zinc: "bg-[#2f6d8b]",
 };
 
 /**

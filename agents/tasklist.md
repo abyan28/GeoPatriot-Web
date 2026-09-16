@@ -1,6 +1,6 @@
 # Tasklist - GeoPatriot Web
 
-Progress: 53%
+Progress: 56%
 
 Catatan: Layer non-UI (Phase 0, types, lib) dikerjakan oleh Claude Code.
 Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
@@ -77,6 +77,15 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
   - Dibuat: `src/components/ui/index.ts` (Barrel export UI)
   - Diperbarui: `src/app/globals.css` (Dark theme, overscroll-y none, touch tap highlight transparent)
   - Diperbarui: `src/app/layout.tsx` (Mobile viewport cover, tema gelap, metadata GeoPatriot, ToastProvider)
+- [✓] ✅ Task 1.3 - Integrasi Palet Warna & Identitas Visual Kementerian Transmigrasi 2024 `[Sedang]` (Selesai)
+  - Disalin: `public/app-icon.png` dan `public/logo-kementerian.webp` dari referensi
+  - Diperbarui: `src/app/globals.css` (Mendaftarkan CSS variables Deep Navy `#08111d`/`#0e2035`, Golden Ochre `#c5984f`, Muted Teal `#2f6d8b`)
+  - Diperbarui: `src/app/layout.tsx` (Metadata title dan icon kementerian, themeColor `#08111d`)
+  - Diperbarui: `src/components/ui/Button.tsx` (Varian primary Warm Gold `#c5984f`, secondary Deep Navy, glassmorphism)
+  - Diperbarui: `src/components/ui/StatusChip.tsx` (Pewarnaan Muted Teal dan Warm Gold yang serasi)
+  - Diperbarui: `src/components/ui/Card.tsx` & `BottomSheet.tsx` (Gaya Deep Navy Glassmorphism)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Header menampilkan logo resmi `app-icon.png` dan label "Kementerian Transmigrasi RI")
+  - Diperbarui: `src/features/camera/camera-permission-fallback.tsx` (Welcome screen menampilkan emblem logo resmi dengan glow hangat)
 
 ## Phase 2 - Camera Proof of Concept & Viewfinder
 
@@ -116,6 +125,6 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
 
 ## Ringkasan Checkpoint Saat Ini
 
-Perbaikan `allowedDevOrigins` pada Next.js dev server telah selesai diterapkan di `next.config.ts`.
-Saat dev server direstart dengan `pnpm dev:https`, request chunk JS dan HMR dari `192.168.100.10` tidak akan lagi diblokir cross-origin, sehingga halaman di HP dapat langsung terbuka dan interaktif.
-Selanjutnya siap melanjutkan ke **Phase 3 (Geolocation Integration)** dan **Phase 4 (Metadata Editor)**.
+Identitas visual resmi Kementerian Transmigrasi 2024 (Deep Navy, Golden Ochre, Muted Teal) telah selesai diintegrasikan secara menyeluruh pada aset, token CSS, komponen UI, top header, dan layar sambutan kamera.
+Aplikasi kini tampil sangat kredibel dan berkarakter dinas resmi, bebas error build, typecheck, dan lint.
+Selanjutnya siap melanjutkan ke **Phase 3 (Geolocation GPS Integration)** dan **Phase 4 (Metadata Editor Sheet)**.

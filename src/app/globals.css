@@ -1,8 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #f4f4f5;
+  /* Palet Resmi Kementerian Transmigrasi RI (2024) */
+  --background: #08111d;
+  --foreground: #f4f8fa;
+
+  /* Brand Colors */
+  --color-trans-navy: #0e2b47;
+  --color-trans-navy-dark: #08111d;
+  --color-trans-navy-card: #0e2035;
+  --color-trans-navy-border: #1a3c61;
+
+  --color-trans-gold: #c5984f;
+  --color-trans-gold-light: #dcab55;
+  --color-trans-gold-dark: #a97e36;
+
+  --color-trans-teal: #2f6d8b;
+  --color-trans-teal-light: #3e88ab;
 }
 
 @theme inline {
