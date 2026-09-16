@@ -28,6 +28,12 @@
 4. Jangan menganggap semua browser mendukung semua camera capability.
 5. Jangan menaruh kontrol besar di atas area framing foto.
 6. Capture harus tetap memungkinkan ketika metadata eksternal seperti reverse geocoding/map gagal.
+7. Zoom kamera harus mengontrol stream kamera nyata via MediaStreamTrack (`applyConstraints({ advanced: [{ zoom }] })`), BUKAN manipulasi skala visual CSS (`transform: scale()`) yang akan menyebabkan ketidaksesuaian resolusi dan framing foto hasil capture.
+8. Feature detection wajib dilakukan pada `MediaStreamTrack.getCapabilities()` sebelum menampilkan kontrol zoom. Jangan mengasumsikan semua browser mendukung zoom kamera, jangan mengasumsikan keberadaan optical zoom, dan jangan mengasumsikan level (seperti 2× atau 3×) atau rentang zoom yang sama di seluruh perangkat.
+9. Jika browser atau perangkat tidak mendukung native camera zoom, kontrol zoom harus disembunyikan atau dinonaktifkan secara anggun (*graceful degradation*). Jangan memaksakan *fake zoom* yang menyesatkan pengguna. Kamera dan proses pengambilan foto harus tetap dapat digunakan secara normal pada 1×.
+10. Jangan menjanjikan atau mengklaim optical zoom kepada pengguna. GeoPatriot Web hanya mengontrol kapabilitas zoom yang diekspos oleh browser/perangkat (yang umumnya merupakan digital zoom). Jangan membuat klaim bahwa label `2×`, `3×`, dan seterusnya selalu berarti optical zoom.
+11. Interaksi zoom pada layar sentuh harus mendukung *pinch-to-zoom* (two-finger pinch in/out) yang natural tanpa memicu gestur zoom halaman browser, didampingi kontrol preset visual yang adaptif (misal `1×`, `2×`, `3×` sesuai kapabilitas min/max/step perangkat) atau slider. Slider tidak boleh menjadi satu-satunya cara melakukan zoom pada touchscreen.
+12. Tingkat zoom yang aktif saat tombol shutter ditekan merupakan bagian dari kondisi capture (Camera State). Frame foto yang diekstraksi ke canvas harus mencerminkan zoom aktif tersebut. Watermark diaplikasikan di atas foto hasil zoom secara proporsional tanpa mengalami distorsi ukuran font atau tata letak.
 
 ## 4. Location Rules
 
@@ -149,6 +155,7 @@ IndexedDB memang mendukung data terstruktur termasuk Blob/file, tetapi quota dan
 6. Preview watermark harus tersedia sebelum shutter.
 7. Orientation landscape harus diuji.
 8. Jangan menganggap perilaku Safari sama dengan Chrome Android.
+9. Area viewfinder kamera harus mencegah gestur zoom halaman web browser bawaan saat pengguna melakukan pinch-to-zoom (terapkan `touch-action: none` pada kontainer viewfinder kamera).
 
 ## 16. Accessibility Rules
 
@@ -205,6 +212,9 @@ Minimal test pada:
 Wajib diuji:
 
 - camera permission
+- camera zoom capability detection (supported vs unsupported)
+- pinch-to-zoom & preset button controls
+- capture frame zoom consistency (preview vs processed canvas)
 - GPS permission
 - manual metadata
 - capture
@@ -284,6 +294,7 @@ No reverse geocode -> capture masih bisa
 No map             -> capture masih bisa
 GPS denied         -> manual location masih bisa
 Poor GPS accuracy  -> capture masih bisa
+Zoom unsupported   -> capture masih bisa (1×)
 ```
 
 Tujuan utama aplikasi adalah mengambil dan menghasilkan foto terdokumentasi; layanan tambahan tidak boleh menjadi single point of failure.

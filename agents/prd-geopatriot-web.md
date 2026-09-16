@@ -53,6 +53,8 @@ Aplikasi harus tetap mudah digunakan oleh pengguna non-teknis.
 
 Kamera menggunakan `getUserMedia()`, yang membutuhkan secure context/HTTPS dan izin kamera. Vercel menyediakan HTTPS pada deployment publik. [MDN getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
 
+Fitur Camera Zoom memanfaatkan `MediaStreamTrack.getCapabilities()` dan `applyConstraints({ advanced: [{ zoom }] })`. Kapabilitas zoom ini bergantung pada dukungan native hardware kamera dan browser engine (Media Capture Image API). [W3C Image Capture Zoom](https://w3c.github.io/mediacapture-image/#zoom)
+
 GPS menggunakan Geolocation API, yang juga membutuhkan secure context dan izin pengguna. [MDN Geolocation](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API)
 
 ## 6. Arsitektur Tingkat Tinggi
@@ -132,6 +134,7 @@ Layar kamera menjadi layar utama.
 - live camera preview
 - tombol shutter utama
 - switch front/rear camera bila browser/device mendukung
+- kontrol camera zoom (pinch-to-zoom, tombol preset 1×/2×/dst., atau slider) jika didukung perangkat/browser
 - status GPS
 - status timestamp
 - pengaturan lokasi
@@ -140,6 +143,79 @@ Layar kamera menjadi layar utama.
 - tombol settings
 - indikator jumlah foto pada sesi
 - akses ke session gallery
+
+### 10.1 Camera Zoom
+
+GeoPatriot Web menyediakan kemampuan melakukan zoom kamera sebelum mengambil foto dokumentasi.
+
+#### A. Prinsip Dasar
+1. **Bagian dari Camera UX Asli**: Zoom kamera harus mengontrol stream video kamera nyata melalui API browser (`MediaStreamTrack.applyConstraints({ advanced: [{ zoom }] })`), bukan sekadar pembesaran preview secara visual menggunakan CSS (`transform: scale()`).
+2. **Mobile-First Smartphone Focus**: Fitur dirancang terutama untuk interaksi satu tangan dan gestur sentuh smartphone.
+3. **Graceful Degradation**: Zoom adalah kemampuan opsional perangkat keras/browser. Jika perangkat tidak mendukung zoom, kamera dan proses capture tetap harus berjalan normal tanpa gangguan.
+
+#### B. Mekanisme Interaksi
+Aplikasi mendukung setidaknya mekanisme zoom berikut:
+
+1. **Pinch-to-Zoom**:
+   - Pada perangkat touchscreen yang mendukung, interaksi dua jari:
+     - *Two-finger pinch out* → Zoom in (memperbesar).
+     - *Two-finger pinch in* → Zoom out (memperkecil).
+   - Gestur harus terasa natural dan tidak memicu zoom halaman browser secara tidak sengaja (misal dengan penanganan `touch-action: none` pada kontainer viewfinder kamera).
+
+2. **Zoom Control Presets**:
+   - Kontrol tombol visual yang jelas dan mudah ditekan pada area kontrol kamera (Thumb Zone).
+   - Menyediakan pilihan level zoom adaptif sesuai rentang yang dilaporkan perangkat, misalnya `1×`, `2×`, `3×` (atau nilai step terdekat).
+   - Desain UI tidak boleh mengasumsikan semua perangkat memiliki level zoom yang sama. Nilai tombol disesuaikan secara dinamis dari kapabilitas perangkat (`min`, `max`, `step`).
+
+3. **Zoom Slider**:
+   - Slider kontinu sebagai pelengkap atau alternatif kontrol presisi jika implementasi UI/UX mendukung.
+   - Slider **tidak boleh menjadi satu-satunya cara** melakukan zoom pada perangkat touchscreen.
+
+#### C. Deteksi Kapabilitas Perangkat & Browser (Capability Detection)
+Kemampuan zoom kamera pada browser web tidak seragam antar platform (misalnya, Android Chrome umumnya mendukung MediaStreamTrack zoom, sedangkan Safari iOS/WebKit memiliki batasan spesifik).
+
+1. **Feature Detection Wajib**:
+   - Implementasi harus memeriksa ketersediaan properti `zoom` pada kapabilitas track video:
+     ```javascript
+     const capabilities = track.getCapabilities?.();
+     const isZoomSupported = capabilities && 'zoom' in capabilities;
+     ```
+   - Parameter `min`, `max`, dan `step` harus dibaca langsung dari `capabilities.zoom`.
+2. **Tanpa Asumsi Keliru**:
+   - Jangan mengasumsikan semua browser mendukung zoom kamera.
+   - Jangan mengasumsikan semua kamera memiliki rasio 2× atau 3×.
+   - Jangan mengasumsikan semua perangkat memiliki rentang zoom yang sama.
+3. **Penanganan Kondisi Tidak Didukung (Unsupported)**:
+   - Jika native camera zoom tidak didukung oleh browser/perangkat:
+     - Kamera tetap dapat digunakan secara normal untuk mengambil foto (1×).
+     - Aplikasi tidak boleh gagal, crash, atau menampilkan error yang mengganggu alur kerja.
+     - Kontrol zoom (tombol/slider) disembunyikan atau dinonaktifkan secara anggun.
+     - **Jangan memaksakan fake camera control** (misal memperbesar elemen CSS preview) yang memberikan ilusi palsu kepada pengguna seolah-olah kamera melakukan zoom native.
+
+#### D. Optical Zoom vs Digital Zoom
+1. **Perbedaan Teknis**:
+   - *Optical Zoom*: Pembesaran optik melalui pergerakan lensa fisik atau peralihan ke kamera telefoto native.
+   - *Digital Zoom*: Pembesaran melalui pemotongan (cropping) dan interpolasi digital sensor kamera.
+2. **Klaim Produk yang Jujur**:
+   - GeoPatriot Web **tidak menjanjikan optical zoom** kepada pengguna.
+   - Aplikasi hanya mengontrol kapabilitas zoom yang diekspos secara nyata oleh browser/perangkat.
+   - Jangan pernah mencantumkan klaim bahwa label `2×`, `3×`, dan seterusnya selalu berarti optical zoom. Jika perangkat hanya menyediakan digital zoom, aplikasi memanfaatkannya sesuai kapabilitas tersebut tanpa membuat klaim berlebih.
+
+#### E. Zoom dalam Kondisi Capture (Camera State)
+Tingkat zoom yang sedang aktif saat tombol shutter ditekan merupakan bagian integral dari kondisi capture:
+
+```text
+Camera State
+├── Camera facing (rear/front)
+├── Orientation (portrait/landscape)
+├── Zoom level (e.g. 1×, 2×)
+├── Location snapshot (GPS/manual)
+├── Timestamp snapshot (auto/manual)
+└── Watermark configuration
+```
+
+- Frame video kamera yang diekstraksi ke canvas harus merefleksikan tingkat zoom yang aktif tersebut.
+- Elemen watermark (panel Deep Navy, teks alamat, koordinat, logo, dll.) tetap dirender secara proporsional di atas foto hasil zoom dengan ukuran font dan layout yang konsisten, tanpa ikut terdistorsi oleh faktor zoom foto.
 
 ### Watermark preview
 
@@ -370,12 +446,20 @@ Prinsip:
 - tidak menggunakan dashboard yang terlalu berat
 - dark camera surface agar preview foto tetap dominan
 - kontrol utama tidak menghalangi framing kamera
+- kontrol camera zoom berada di zona jangkauan ibu jari (Thumb Zone) dan tidak mengaburkan area framing bidik utama
 
 ## 22. Error Handling
 
 ### Camera denied
 
 Tampilkan alasan, instruksi membuka permission browser, dan tombol coba lagi.
+
+### Camera zoom unsupported / constraint failed
+
+Jika perangkat atau browser tidak mendukung `MediaTrackCapabilities.zoom` atau gagal menerapkan constraint zoom:
+- Kontrol zoom disembunyikan atau dinonaktifkan secara anggun (*graceful degradation*).
+- Kamera dan proses capture tetap berfungsi normal pada level zoom default (1×).
+- Tidak memunculkan error fatal yang menghambat alur kerja pengambilan foto.
 
 ### GPS denied
 
@@ -434,6 +518,9 @@ Camera preview dan watermark harus disesuaikan dengan orientation layar dan dime
 - Pengguna dapat membuka camera preview di browser HTTPS.
 - Pengguna dapat mengambil foto.
 - Foto asli tidak ditimpa oleh hasil watermark.
+- Aplikasi mendeteksi kapabilitas zoom kamera native (`MediaStreamTrack`).
+- Jika didukung: pengguna dapat mengubah zoom kamera (via pinch-to-zoom atau tombol kontrol preset/slider), dan foto hasil capture merefleksikan tingkat zoom aktif.
+- Jika tidak didukung: kontrol zoom disembunyikan/dinonaktifkan secara aman tanpa memicu crash/error, dan kamera tetap dapat mengambil foto secara normal (1×).
 
 ### Metadata
 
@@ -490,6 +577,8 @@ Camera preview dan watermark harus disesuaikan dengan orientation layar dan dime
 - LocationIQ Pricing: https://locationiq.com/pricing
 - LocationIQ Reverse Geocoding: https://docs.locationiq.com/docs/reverse-geocoding
 - LocationIQ Static Maps: https://docs.locationiq.com/docs/static-maps
+- W3C Image Capture Zoom: https://w3c.github.io/mediacapture-image/#zoom
+- MDN MediaTrackConstraints.zoom: https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints/zoom
 
 ## 29. Pedoman Pengerjaan AI (Tasklist Rules)
 

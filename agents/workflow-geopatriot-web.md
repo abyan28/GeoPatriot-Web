@@ -72,18 +72,25 @@ public/
 
 ### Tujuan
 
-Memastikan browser benar-benar dapat mengakses kamera.
+Memastikan browser benar-benar dapat mengakses kamera dan mendeteksi kapabilitas perangkat termasuk camera zoom.
 
 ### Implementasi
 
-Gunakan `navigator.mediaDevices.getUserMedia()`.
-
-Camera permission hanya diminta saat user memasuki fitur kamera atau menekan aksi yang membutuhkan kamera.
+1. Gunakan `navigator.mediaDevices.getUserMedia()`.
+2. Camera permission hanya diminta saat user memasuki fitur kamera atau menekan aksi yang membutuhkan kamera.
+3. Deteksi kapabilitas zoom kamera native via `track.getCapabilities()`:
+   - Periksa keberadaan properti `zoom`.
+   - Baca parameter `min`, `max`, dan `step` bila tersedia.
+4. Terapkan zoom constraints via `track.applyConstraints({ advanced: [{ zoom }] })`.
+5. Siapkan interaksi pinch-to-zoom dan kontrol tombol preset/slider dengan fallback anggun (*graceful degradation*) bila zoom tidak didukung.
 
 ### Acceptance
 
 - preview tampil
 - rear camera dapat dipilih bila tersedia
+- kapabilitas zoom kamera terdeteksi secara dinamis
+- zoom berfungsi mengontrol stream kamera (via pinch atau tombol) bila didukung
+- perangkat tanpa dukungan zoom tetap dapat menggunakan kamera secara normal (1×) tanpa error
 - kamera dapat dihentikan
 - permission denied ditangani
 - HTTPS deployment berhasil
@@ -161,22 +168,41 @@ Alur satu foto:
 ```text
 Press shutter
    ↓
-Freeze metadata snapshot
+Freeze Camera State & Metadata snapshot
+(facing, orientation, zoom level, location, timestamp)
    ↓
-Capture frame
+Capture frame from video stream
+(frame mencerminkan tingkat pembesaran zoom aktif)
    ↓
-Load image
+Load image to Canvas
    ↓
 Render watermark on Canvas
+(watermark digambar proporsional di atas foto hasil zoom)
    ↓
 Export processed Blob
    ↓
-Store locally
+Store locally (IndexedDB)
    ↓
 Update session gallery
 ```
 
-Penting: metadata snapshot dibekukan sekali untuk satu capture.
+### Camera State saat Capture
+
+Zoom yang sedang aktif ketika tombol shutter ditekan merupakan bagian dari kondisi capture:
+
+```text
+Camera State
+├── Camera facing (rear / front)
+├── Orientation (portrait / landscape)
+├── Zoom level (e.g. 1×, 2×, 3×)
+├── Location snapshot (GPS / manual)
+├── Timestamp snapshot (auto / manual)
+└── Watermark configuration (template, layout, fields)
+```
+
+Penting:
+1. Metadata snapshot dan zoom level dibekukan sekali untuk setiap kali capture dipicu.
+2. Watermark dirender di atas frame hasil capture tanpa mengubah ukuran font maupun proporsi elemen watermark akibat faktor zoom kamera.
 
 ## 8. Phase 6 - Watermark Engine
 
@@ -387,6 +413,9 @@ camera_requesting
 camera_ready
 camera_denied
 camera_error
+camera_zoom_supported
+camera_zoom_unsupported
+camera_zoom_error
 
 gps_idle
 gps_searching
@@ -407,7 +436,7 @@ storage_warning
 storage_full
 ```
 
-Semua service error harus mempunyai fallback yang jelas.
+Semua service error harus mempunyai fallback yang jelas. Kegagalan atau ketiadaan dukungan zoom kamera tidak boleh menghentikan kesiapan kamera (`camera_ready`) dan hanya menonaktifkan/menyembunyikan kontrol zoom.
 
 ## 17. Phase 15 - iPhone Safari Testing
 
@@ -418,6 +447,9 @@ Uji minimal:
 - camera permission
 - location permission
 - front/rear camera
+- camera zoom capability detection (perilaku WebKit Safari iOS)
+- pinch-to-zoom vs browser page zoom gesture handling (touch-action)
+- graceful fallback saat zoom constraints tidak didukung di Safari
 - orientation portrait
 - orientation landscape
 - camera capture
@@ -435,6 +467,10 @@ Uji minimal:
 
 - permission flow
 - camera switching
+- camera native zoom capability (min, max, step pada kamera belakang/depan)
+- pinch-to-zoom gesture fluency
+- preset zoom switching (1×, 2×, dst.)
+- capture frame output matching preview zoom level
 - GPS accuracy
 - capture
 - storage
@@ -481,6 +517,7 @@ Catatan: environment variable yang dikirim ke client bundle bukan secret. Jangan
 ### Functional
 
 - camera
+- camera zoom (capability detection, pinch-to-zoom, preset/slider controls, capture state sync, unsupported fallback)
 - GPS
 - manual location
 - manual timestamp
