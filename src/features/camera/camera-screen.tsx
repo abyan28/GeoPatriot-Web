@@ -1,19 +1,23 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useCamera } from "./use-camera";
 import { CameraViewport } from "./camera-viewport";
 import { CameraControls } from "./camera-controls";
+import { useCapturePipeline } from "./use-capture-pipeline";
+import { PhotoPreviewDialog } from "./photo-preview-dialog";
 import { useGeolocation } from "@/features/location";
 import { useMetadataConfig, MetadataEditorSheet, getLocalTimezone } from "@/features/metadata";
+import { useWatermarkSettings } from "@/features/watermark";
 import { StatusChip, GpsQualityChip } from "@/components/ui/StatusChip";
 import { EditIcon, MapPinIcon, ClockIcon, SlidersIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
+import type { Photo } from "@/types/session";
 
 /**
- * Komponen layar utama Kamera GeoPatriot Web (Integrasi Phase 1-4).
- * Menyajikan live camera feed, live GPS tracking, live watermark HUD, dan bottom sheet editor metadata.
+ * Komponen layar utama Kamera GeoPatriot Web (Integrasi Phase 1-6).
+ * Menyajikan live camera feed, live GPS tracking, watermark rendering engine, dan capture pipeline ke IndexedDB.
  */
 export function CameraScreen() {
   const {
@@ -24,6 +28,7 @@ export function CameraScreen() {
     start,
     toggleFacingMode,
   } = useCamera();
+
   const {
     status: geoStatus,
     coordinate: geoCoord,
@@ -47,11 +52,37 @@ export function CameraScreen() {
     resetToDefaults,
   } = useMetadataConfig();
 
+  const { settings: watermarkSettings } = useWatermarkSettings();
+
+  const { capturePhoto, isCapturing, lastPhoto, sessionPhotoCount } = useCapturePipeline({
+    videoRef,
+    isCameraReady: cameraStatus === "ready",
+    watermarkSettings,
+    createSnapshot: () =>
+      createSnapshot({
+        gpsCoordinate: geoCoord,
+        gpsQuality: geoQuality,
+        gpsAddressInfo: geoAddress,
+      }),
+  });
+
   const { showToast } = useToast();
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
-  const [sessionCount, setSessionCount] = useState<number>(0);
   const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
   const [liveClock, setLiveClock] = useState<string>("");
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const thumbnailRef = useRef<string | null>(null);
+
+  // Revoke Object URL saat unmount untuk mencegah memory leak
+  useEffect(() => {
+    return () => {
+      if (thumbnailRef.current) {
+        URL.revokeObjectURL(thumbnailRef.current);
+      }
+    };
+  }, []);
 
   // Live timer untuk update jam di preview watermark HUD
   useEffect(() => {
@@ -70,33 +101,48 @@ export function CameraScreen() {
   }, []);
 
   /**
-   * Handler tombol capture: membekukan MetadataSnapshot (Rules #5.1) dan memicu flash.
+   * Handler tombol capture: mengeksekusi pipeline capture frame & watermark canvas (Phase 5 & 6).
    */
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (cameraStatus !== "ready") {
       showToast("Kamera belum aktif", "error");
       return;
     }
 
-    // Bekukan snapshot metadata secara immutable pada saat shutter ditekan
-    const snapshot = createSnapshot({
-      gpsCoordinate: geoCoord,
-      gpsQuality: geoQuality,
-      gpsAddressInfo: geoAddress,
-    });
-
-    // Efek visual shutter flash
+    // Efek visual shutter flash instan
     setIsFlashing(true);
-    setTimeout(() => setIsFlashing(false), 250);
+    setTimeout(() => setIsFlashing(false), 200);
 
-    setSessionCount((prev) => prev + 1);
+    const result = await capturePhoto();
+    if (result.status === "success" && result.photo) {
+      const blob =
+        result.photo.thumbnailBlob || result.photo.processedBlob || result.photo.originalBlob;
+      if (thumbnailRef.current) {
+        URL.revokeObjectURL(thumbnailRef.current);
+      }
+      const newUrl = URL.createObjectURL(blob);
+      thumbnailRef.current = newUrl;
+      setThumbnailUrl(newUrl);
 
-    const locDesc =
-      snapshot.metadataSource.location === "manual"
-        ? `Manual (${snapshot.coordinate.latitude.toFixed(4)}, ${snapshot.coordinate.longitude.toFixed(4)})`
-        : `GPS (${snapshot.coordinate.latitude.toFixed(4)}, ${snapshot.coordinate.longitude.toFixed(4)})`;
+      const source = result.photo.snapshot.metadataSource.location.toUpperCase();
+      const lat = result.photo.snapshot.coordinate.latitude.toFixed(4);
+      const lon = result.photo.snapshot.coordinate.longitude.toFixed(4);
+      showToast(`Foto tersimpan [${source}] ${lat}, ${lon}`, "success");
+    } else {
+      showToast(result.errorMessage || "Gagal mengambil foto", "error");
+    }
+  };
 
-    showToast(`Foto diambil • ${locDesc}`, "success");
+  /**
+   * Membuka pratinjau foto terakhir.
+   */
+  const handleOpenGallery = () => {
+    if (lastPhoto) {
+      setSelectedPhoto(lastPhoto);
+      setIsPreviewOpen(true);
+    } else {
+      showToast("Belum ada foto yang diambil pada sesi ini.", "info");
+    }
   };
 
   // Koordinat & alamat aktif untuk ditampilkan pada Live HUD
@@ -272,8 +318,10 @@ export function CameraScreen() {
           <CameraControls
             onCapture={handleCapture}
             onToggleFacingMode={toggleFacingMode}
-            sessionPhotoCount={sessionCount}
-            onOpenGallery={() => showToast(`Sesi ini memiliki ${sessionCount} foto`, "info")}
+            sessionPhotoCount={sessionPhotoCount}
+            onOpenGallery={handleOpenGallery}
+            isCapturing={isCapturing}
+            thumbnailUrl={thumbnailUrl}
           />
         </footer>
       )}
@@ -303,6 +351,13 @@ export function CameraScreen() {
           resetToDefaults();
           showToast("Pengaturan dikembalikan ke default", "info");
         }}
+      />
+
+      {/* Dialog Pratinjau Foto & Download Langsung (Phase 5 & 6) */}
+      <PhotoPreviewDialog
+        photo={selectedPhoto}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
       />
     </div>
   );

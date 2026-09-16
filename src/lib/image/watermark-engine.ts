@@ -60,6 +60,7 @@ export interface RenderWatermarkOptions {
   canvasFactory?: CanvasFactory;
   outputType?: string;
   outputQuality?: number;
+  logoImage?: CanvasImageSourceLike;
 }
 
 const LINE_HEIGHT_MULTIPLIER = 1.4;
@@ -78,6 +79,7 @@ export function renderWatermark(options: RenderWatermarkOptions): Promise<Waterm
     canvasFactory = defaultCanvasFactory,
     outputType = "image/jpeg",
     outputQuality = 0.92,
+    logoImage,
   } = options;
 
   const { width, height } = clampOutputDimensions(sourceWidth, sourceHeight);
@@ -92,7 +94,7 @@ export function renderWatermark(options: RenderWatermarkOptions): Promise<Waterm
   }
 
   ctx.drawImage(sourceImage, 0, 0, width, height);
-  drawWatermarkPanel(ctx, width, height, data, settings);
+  drawWatermarkPanel(ctx, width, height, data, settings, logoImage);
 
   return new Promise((resolve) => {
     try {
@@ -120,9 +122,8 @@ export function renderWatermark(options: RenderWatermarkOptions): Promise<Waterm
 }
 
 /**
- * Menggambar panel watermark semi-transparan berisi baris teks di atas foto.
- * Map thumbnail & attribution digambar terpisah lewat drawMapThumbnail/drawAttribution
- * (rules #6.4: map thumbnail dan attribution adalah elemen terpisah).
+ * Menggambar panel watermark Deep Navy & Golden Ochre berisi stempel logo & baris teks di atas foto.
+ * Sesuai Rules #6.1: Watermark adalah hasil rendering Canvas nyata pada output Blob.
  */
 function drawWatermarkPanel(
   ctx: Canvas2DLike,
@@ -130,32 +131,73 @@ function drawWatermarkPanel(
   canvasHeight: number,
   data: WatermarkData,
   settings: WatermarkVisualSettings,
+  logoImage?: CanvasImageSourceLike,
 ): void {
   const lines = buildWatermarkTextLines(data, settings);
   if (lines.length === 0) return;
 
-  const lineHeight = settings.fontSizePx * LINE_HEIGHT_MULTIPLIER;
-  const panelHeight = settings.marginPx * 2 + lines.length * lineHeight;
-  const panelY =
-    settings.position === "bottom"
-      ? canvasHeight - panelHeight - settings.marginPx
-      : settings.marginPx;
+  // Skala proporsional berbasis resolusi canvas terhadap 1080px (standar portrait modern)
+  const scale = Math.max(0.7, Math.min(2.5, canvasWidth / 1080));
+  const fontSize = Math.round(settings.fontSizePx * scale);
+  const margin = Math.round(settings.marginPx * scale);
+  const spacing = Math.round(settings.spacingPx * scale);
+  const lineHeight = Math.round(fontSize * LINE_HEIGHT_MULTIPLIER);
+  const stripeWidth = Math.max(4, Math.round(5 * scale));
 
+  // Logo size jika logoImage disediakan
+  const hasLogo = Boolean(logoImage && settings.visibleFields.branding);
+  const logoSize = hasLogo ? Math.round(fontSize * 2.4) : 0;
+  const contentLeftOffset = hasLogo ? logoSize + spacing * 2 : 0;
+
+  const panelHeight = margin * 2 + Math.max(lines.length * lineHeight, logoSize);
+  const panelY = settings.position === "bottom" ? canvasHeight - panelHeight - margin : margin;
+
+  const panelX = margin;
+  const panelWidth = canvasWidth - margin * 2;
+
+  // 1. Gambar latar panel Deep Navy dengan opacity
   ctx.save();
   ctx.globalAlpha = settings.opacity;
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(settings.marginPx, panelY, canvasWidth - settings.marginPx * 2, panelHeight);
+  ctx.fillStyle = "#08111d";
+  ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
   ctx.restore();
 
+  // 2. Gambar strip aksen vertikal Golden Ochre di sisi kiri panel
+  ctx.save();
+  ctx.globalAlpha = 0.95;
+  ctx.fillStyle = "#c5984f";
+  ctx.fillRect(panelX, panelY, stripeWidth, panelHeight);
+  ctx.restore();
+
+  // 3. Gambar Logo Stamp resmi aplikasi jika ada
+  if (hasLogo && logoImage) {
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.drawImage(logoImage, panelX + stripeWidth + spacing, panelY + margin, logoSize, logoSize);
+    ctx.restore();
+  }
+
+  // 4. Gambar baris-baris teks metadata
   ctx.save();
   ctx.globalAlpha = 1;
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `${settings.fontSizePx}px sans-serif`;
+  ctx.font = `${fontSize}px sans-serif`;
   ctx.textBaseline = "top";
 
   lines.forEach((line, index) => {
-    const textX = settings.marginPx + settings.spacingPx;
-    const textY = panelY + settings.marginPx + index * lineHeight;
+    const textX = panelX + stripeWidth + spacing + contentLeftOffset;
+    const textY = panelY + margin + index * lineHeight;
+
+    // Pewarnaan teks informatif
+    if (line.text === "GeoPatriot") {
+      ctx.fillStyle = "#dcab55"; // Emas hangat untuk branding
+    } else if (line.text.startsWith("Akurasi") || line.text.startsWith("Altitude")) {
+      ctx.fillStyle = "#94a3b8"; // Abu-abu sejuk untuk sensor
+    } else if (line.text.includes(",") && (line.text.includes(".") || line.text.includes("°"))) {
+      ctx.fillStyle = "#7ec7e8"; // Muted teal untuk koordinat
+    } else {
+      ctx.fillStyle = "#ffffff"; // Putih bersih untuk lokasi & waktu
+    }
+
     ctx.fillText(line.text, textX, textY);
   });
   ctx.restore();

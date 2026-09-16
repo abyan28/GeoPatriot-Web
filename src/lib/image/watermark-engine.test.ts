@@ -113,4 +113,30 @@ describe("renderWatermark", () => {
 
     expect(sourceImage).toEqual(sourceSnapshot);
   });
+
+  it("menggambar logoImage jika disediakan pada options", async () => {
+    const { canvas, ctx } = createFakeCanvas();
+    const mockLogo = { brand: "geopatriot" };
+
+    const result = await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: SAMPLE_DATA,
+      settings: createDefaultTemplate(),
+      canvasFactory: () => canvas,
+      logoImage: mockLogo,
+    });
+
+    expect(result.status).toBe("success");
+    // ctx.drawImage dipanggil minimal 2x (sekali untuk sourceImage, sekali untuk logo)
+    expect(ctx.drawImage).toHaveBeenCalledTimes(2);
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      mockLogo,
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
 });

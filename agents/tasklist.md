@@ -125,25 +125,43 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
   - Diperbarui: `src/components/icons/index.tsx` (Menambahkan `CrosshairIcon`, `SlidersIcon`, `EditIcon`)
   - Diperbarui: `src/features/camera/camera-screen.tsx` (Mengintegrasikan live GPS chip, interaktif tap status bar, live watermark HUD real-time, dan pembekuan snapshot saat shutter)
 
+## Phase 5 - Capture Pipeline
+
+- [✓] ✅ Task 5.1 - Pipeline Pengambilan Frame Kamera & Penyimpanan Lokal `[Sedang]` (Selesai)
+  - Dibuat: `src/lib/image/frame-capture.ts` (Ekstraksi frame asli & thumbnail dari HTMLVideoElement aktif)
+  - Dibuat: `src/lib/image/frame-capture.test.ts` (Unit test frame capture)
+  - Dibuat: `src/features/camera/use-capture-pipeline.ts` (Orkestrasi alur capture: shutter -> freeze snapshot -> capture frame -> render watermark -> IndexedDB -> gallery update)
+  - Dibuat: `src/features/camera/photo-preview-dialog.tsx` (Dialog pratinjau foto ber-watermark & download langsung)
+  - Diperbarui: `src/features/camera/camera-controls.tsx` (Mendukung live thumbnail foto terakhir pada tombol galeri)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Wiring shutter capture, live flash effect, thumbnail preview, dan dialog unduh)
+  - Diperbarui: `src/features/camera/index.ts` (Barrel export fitur camera)
+
+## Phase 6 - Watermark Engine Rendering
+
+- [✓] ✅ Task 6.1 - Perenderan Watermark Berbasis Canvas dengan Identitas Visual Resmi `[Sedang]` (Selesai)
+  - Dibuat: `src/features/watermark/use-watermark-settings.ts` (Hook visual settings template Default, Ringkas, dan Detail)
+  - Dibuat: `src/features/watermark/index.ts` (Barrel export fitur watermark)
+  - Diperbarui: `src/lib/image/watermark-engine.ts` (Skala proporsional resolusi tinggi, panel Deep Navy `#08111d`, aksen emas `#c5984f`, stempel resmi logo aplikasi `app-icon.png`, dan output Blob terpisah)
+  - Diperbarui: `src/lib/image/watermark-engine.test.ts` (Pengujian rendering stempel logoImage)
+
 ## Verifikasi Baseline & Build
 
 - [✓] ✅ Task V.1 - Smoke test end-to-end lintas layer (session -> photo -> watermark -> zip) `[Sedang]` (Selesai)
   - File dibuat: `src/lib/integration.smoke.test.ts`
 - [✓] ✅ Task V.2 - `pnpm typecheck`, `pnpm lint`, `pnpm test` seluruhnya lulus `[Mudah]` (Selesai)
-  - 44/44 unit test lulus (14 test suites), 0 error TypeScript, 0 error ESLint
+  - 47/47 unit test lulus (15 test suites), 0 error TypeScript, 0 error ESLint
 - [✓] ✅ Task V.3 - `pnpm build` lulus tanpa error Turbopack Next.js 16 `[Mudah]` (Selesai)
 
 ## Belum Dikerjakan (Next Steps)
 
-- [ ] Task 5.1 & 6.1 - Phase 5 & 6: Capture Pipeline ke Canvas & Watermark Live Rendering (`src/features/watermark/`, wiring ke `src/lib/image/watermark-engine.ts`)
-- [ ] Task 9.1 & 10.1 - Phase 9 & 10: Multi-Photo Session & Session Gallery Drawer (`src/features/sessions/`, wiring ke `src/lib/storage/photo-repository.ts` & `session-repository.ts`)
-- [ ] Task 11.1 - Phase 11: Single & Batch ZIP Download Trigger (`src/features/downloads/`)
+- [ ] Task 9.1 & 10.1 - Phase 9 & 10: Multi-Photo Session & Session Gallery Drawer (`src/features/sessions/`, grid galeri foto, preview drawer, delete, dan status downloaded)
+- [ ] Task 11.1 - Phase 11: Single & Batch ZIP Download Trigger (`src/features/downloads/`, ZIP generation via fflate)
 - [ ] Task 12.1 - Phase 12: PWA Manifest & Service Worker
 - [ ] Task 13.1 - Phase 13: Settings Sheet & Storage Indicator
 
 ## Ringkasan Checkpoint Saat Ini
 
-Phase 3 (Geolocation Live GPS & Reverse Geocoding) dan Phase 4 (Metadata Editor Sheet & Snapshot Freezing) telah selesai 100%.
-Live tracking GPS dengan kualitas sinyal informatif dan fallback manual telah aktif di viewport kamera. Pengguna dapat mengubah koordinat, waktu, dan catatan lapangan melalui drawer bottom sheet interaktif.
-Seluruh 44 unit test lulus, 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
-Selanjutnya siap melanjutkan ke **Phase 5 & 6 (Capture Pipeline & Watermark Canvas Rendering)**.
+Phase 5 (Capture Pipeline ke IndexedDB) dan Phase 6 (Rendering Watermark Resmi Lapangan ke Canvas) telah selesai 100%.
+Setiap kali tombol shutter ditekan, frame kamera beresolusi penuh ditangkap, snapshot metadata dibekukan, watermark berbingkai Deep Navy & Golden Ochre dengan stempel resmi logo aplikasi dicetak pada canvas, foto asli dan foto olahan disimpan ke IndexedDB, thumbnail tampil pada tombol galeri, dan dialog pratinjau memungkinkan unduhan instan.
+Seluruh 47 unit test lulus, 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
+Selanjutnya siap melanjutkan ke **Phase 9 & 10 (Session Gallery Drawer & Multi-Photo Management)**.

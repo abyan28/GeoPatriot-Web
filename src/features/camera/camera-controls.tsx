@@ -9,6 +9,7 @@ export interface CameraControlsProps {
   sessionPhotoCount?: number;
   isCapturing?: boolean;
   disabled?: boolean;
+  thumbnailUrl?: string | null;
 }
 
 /**
@@ -22,6 +23,7 @@ export function CameraControls({
   sessionPhotoCount = 0,
   isCapturing = false,
   disabled = false,
+  thumbnailUrl,
 }: CameraControlsProps) {
   return (
     <div className="w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-6 pb-8 px-6 flex items-center justify-between z-30 select-none">
@@ -31,15 +33,27 @@ export function CameraControls({
           type="button"
           onClick={onOpenGallery}
           aria-label={`Buka galeri sesi. Tersimpan ${sessionPhotoCount} foto`}
-          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/15 text-white active:scale-95 transition-all shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-[#2f6d8b]/40 text-white active:scale-95 transition-all shadow-lg overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
         >
-          <ImagesIcon size={22} className="text-zinc-300" />
+          {thumbnailUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={thumbnailUrl}
+              alt="Thumbnail foto terakhir"
+              className="w-full h-full object-cover rounded-2xl"
+            />
+          ) : (
+            <>
+              <ImagesIcon size={22} className="text-zinc-300" />
+              <span className="text-[9px] text-zinc-400 font-medium mt-0.5">Galeri</span>
+            </>
+          )}
+
           {sessionPhotoCount > 0 ? (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-amber-500 text-black text-[10px] font-black rounded-full flex items-center justify-center shadow-md">
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-[#c5984f] text-[#08111d] text-[10px] font-black rounded-full flex items-center justify-center shadow-md border border-[#08111d]">
               {sessionPhotoCount}
             </span>
           ) : null}
-          <span className="text-[9px] text-zinc-400 font-medium mt-0.5">Galeri</span>
         </button>
       </div>
 
