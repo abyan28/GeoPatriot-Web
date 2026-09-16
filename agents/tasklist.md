@@ -256,7 +256,7 @@ Audit independen (5 domain) dan remediasi P0/P1/sebagian P2 dikerjakan oleh Clau
   - Fungsional: Kamera, camera zoom, live GPS tracking, manual fallback, watermark canvas rendering, multi-photo sessions, galeri, ZIP download, PWA offline, pengaturan, diagnostik sistem.
   - Privasi & Keamanan: Local-first 100% tanpa upload server (Rules #1.1 & #8.1), opsi pembersihan aman foto terunduh (Rules #10.5), isolasi cache offline tanpa data lokasi pribadi (Rules #14.3).
   - Kompatibilitas: **KOREKSI** — sebelumnya diklaim "Android Chrome, iOS Safari, desktop teruji". Audit independen (lihat di bawah) menemukan klaim ini HANYA didukung unit test simulasi API di Node (`mobile-compatibility.test.ts`), BUKAN pengujian di device/browser fisik. Status sebenarnya: **NOT VERIFIED on real device**.
-  - Kualitas Kode: 92/92 unit & integration test lulus (26 test suites), 0 error TypeScript, 0 warning ESLint, Turbopack production build sukses (naik dari 83 setelah audit & remediasi lanjutan menambah regression test untuk watermark truncation, map thumbnail, ZIP-failure-path, dan cascade-delete via hook).
+  - Kualitas Kode: 95/95 unit & integration test lulus (27 test suites), 0 error TypeScript, 0 warning ESLint, Turbopack production build sukses (naik dari 83 setelah audit & remediasi lanjutan menambah regression test untuk watermark truncation, map thumbnail, ZIP-failure-path, cascade-delete via hook, dan protokol ZIP Web Worker).
 
 ## Ringkasan Checkpoint Akhir (Direvisi Setelah Audit)
 
@@ -309,16 +309,25 @@ tersedia di riwayat percakapan sesi ini. Ringkasan hasil dan remediasi yang SUDA
 - [✓] ✅ Test coverage gap cascade-delete via hook produksi: install `jsdom` + `@testing-library/react`, dibuat `src/features/sessions/use-session-gallery.hook.test.ts` (`// @vitest-environment jsdom` per-file) yang memanggil `clearCurrentSession()` dan `deleteSelectedPhotos()` sungguhan lewat `renderHook`, bukan hanya repository terisolasi.
 - [✓] ✅ CSP header ditambahkan di `next.config.ts` (`script-src 'self' 'unsafe-inline'` — wajib untuk RSC streaming inline script Next.js App Router; `connect-src 'self' + LocationIQ` sebagai perlindungan utama exfiltrasi). **CATATAN: belum diverifikasi di browser nyata** — build produksi lulus tapi CSP violation hanya akan terlihat di console browser sungguhan.
 
-Progress non-device sekarang 100% dari daftar temuan audit — sisa yang tercatat di bawah murni butuh
-keputusan produk/effort besar (bukan bug), atau memang harus device/browser nyata.
+### Lanjutan Remediasi (Sesi ke-3 — ZIP Web Worker & koreksi dokumentasi)
 
-### Belum diperbaiki — butuh keputusan/effort lebih besar (tercatat, JANGAN diklaim selesai)
-- [ ] ZIP compression berjalan di main thread tanpa Web Worker — potensi UI freeze untuk sesi besar (50-200 foto ukuran asli). Sengaja TIDAK dieksekusi sesi ini: memindahkan fflate ke Web Worker butuh setup bundler worker (`new Worker(new URL(...))`) yang perilakunya hanya bisa benar-benar divalidasi di browser nyata — risiko regresi diam-diam tanpa device untuk verifikasi lebih besar daripada manfaatnya saat ini.
-- [ ] Provenance aset `public/app-icon.png` (1024x1024, 619KB) perlu diverifikasi — riwayat git menyebut "Ministry of Transmigration" branding sebelum di-generalisasi. Ini bukan bug kode, perlu keputusan/verifikasi lisensi dari pemilik proyek.
+- [✓] ✅ **ZIP compression dipindah ke Web Worker** (sebelumnya ditunda karena dianggap tidak bisa diverifikasi tanpa device — ternyata BISA dengan pendekatan konservatif berikut, jadi dieksekusi):
+  - `src/lib/downloads/zip-worker.ts` (baru): Worker terpisah yang HANYA menjalankan `fflate.zip()` (tahap CPU-bound); tahap baca Blob tetap di main thread (murah, sudah ada progress-nya).
+  - `src/lib/downloads/zip-download.ts`: `createZipBlob()` sekarang mencoba `compressInWorker()` dulu bila `typeof Worker !== "undefined"`, dengan timeout 30 detik dan `onerror` handler; **fallback otomatis** ke `compressSync()` (kode lama yang sudah teruji) bila Worker gagal di titik manapun (construct throw, onerror, timeout) — capture/download tidak pernah gagal hanya karena Worker bermasalah (rules #10.5/#10.7).
+  - Sengaja **tidak memakai transfer list** pada `postMessage` (structured-clone copy, bukan transfer/detach) — `zippable` di main thread tetap valid untuk fallback tanpa perlu membaca ulang Blob.
+  - `src/lib/downloads/zip-worker-protocol.test.ts` (baru): mock global `Worker` untuk 3 skenario — sukses (hasil ZIP di-unzip ulang & dicocokkan byte-per-byte dengan entries asli), `onerror` dari worker (fallback tetap sukses), construct `Worker` throw (fallback tetap sukses). Seluruh test lama (`zip-download.test.ts` dkk) tetap lulus tanpa diubah karena environment Node tidak punya `Worker` global — otomatis menjalankan jalur fallback sebagai regression coverage gratis.
+  - **Diverifikasi lewat `pnpm build`**: Turbopack benar-benar mengemit chunk worker terpisah (`.next/static/chunks/turbopack-worker-*.js` + `.next/static/media/zip-worker...ts`) — bukan cuma "build tidak error", tapi bukti konkret pola `new Worker(new URL(...))` diproses dan di-bundle dengan benar oleh Turbopack untuk setup proyek ini.
+  - **MASIH NOT VERIFIED tanpa browser/device nyata**: korektnes hasil ZIP dan korektnes fallback sudah diuji unit test; manfaat performanya (UI tidak freeze pada sesi 50-200 foto ukuran asli di perangkat mobile sungguhan) belum bisa dikonfirmasi tanpa device fisik.
+
+- [✓] ✅ **Koreksi dokumentasi provenance `public/app-icon.png`** (klarifikasi langsung dari pemilik proyek, 2026-09-16): Aplikasi GeoPatriot Web **bukan** produk/milik Kementerian Transmigrasi. Hanya **palet warna** dari logo Kementerian Transmigrasi yang dijadikan referensi visual (Deep Navy & Golden Ochre) — tidak ada aset/logo resmi kementerian yang dipakai sebagai file dalam proyek ini. **Lisensi dan kepemilikan program ini adalah milik Tim Ekspedisi Patriot (TEP) Kobalima Timur.** Catatan "perlu diverifikasi" pada temuan audit sebelumnya sudah tidak berlaku.
+
+Progress non-device sekarang 100% dari seluruh temuan audit termasuk ZIP Web Worker — sisa yang
+tercatat di bawah murni butuh device/browser nyata untuk verifikasi (bukan lagi soal risiko
+implementasi kode).
 
 ### WAJIB dilakukan sebelum klaim "production-ready" (tidak bisa diselesaikan lewat kode)
-- [ ] **Verifikasi real-device**: Android Chrome & iPhone Safari fisik — camera, zoom, GPS, watermark visual (termasuk overflow & map thumbnail baru), PWA install, offline. Tasklist Phase 15-16 sebelumnya HANYA didukung unit test simulasi, bukan device nyata.
-- [ ] **Verifikasi performa nyata**: benchmark 10-200 foto ukuran asli (300KB-3MB) di browser sungguhan — benchmark sebelumnya (`performance.benchmark.test.ts`) sintetis (fake-indexeddb, Blob 2-4KB).
+- [ ] **Verifikasi real-device**: Android Chrome & iPhone Safari fisik — camera, zoom, GPS, watermark visual (termasuk overflow & map thumbnail baru), PWA install, offline, dan performa ZIP Worker pada sesi besar. Tasklist Phase 15-16 sebelumnya HANYA didukung unit test simulasi, bukan device nyata.
+- [ ] **Verifikasi performa nyata**: benchmark 10-200 foto ukuran asli (300KB-3MB) di browser sungguhan — benchmark sebelumnya (`performance.benchmark.test.ts`) sintetis (fake-indexeddb, Blob 2-4KB). Termasuk memverifikasi ZIP Worker benar-benar mencegah UI freeze pada sesi besar.
 - [ ] **Verifikasi CSP di browser nyata**: buka DevTools console setelah deploy, pastikan tidak ada CSP violation yang memblokir hydration/font/style Next.js, dan LocationIQ tetap bisa diakses.
 - [ ] Verifikasi HTTPS actual pada domain Vercel production setelah deploy.
 
