@@ -105,6 +105,8 @@ export function useCapturePipeline({
         setSessionPhotos(result.data);
         if (result.data.length > 0) {
           setLastPhoto(result.data[result.data.length - 1]);
+        } else {
+          setLastPhoto(null);
         }
       }
     } catch {
@@ -141,6 +143,8 @@ export function useCapturePipeline({
           setSessionPhotos(result.data);
           if (result.data.length > 0) {
             setLastPhoto(result.data[result.data.length - 1]);
+          } else {
+            setLastPhoto(null);
           }
         }
       } catch {

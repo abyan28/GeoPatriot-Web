@@ -13,12 +13,24 @@ export interface PhotoPreviewDialogProps {
   photo: Photo | null;
   isOpen: boolean;
   onClose: () => void;
+  onDownload?: (photo: Photo) => Promise<void> | void;
+  onDelete?: (photo: Photo) => Promise<void> | void;
 }
 
 /**
  * Konten dialog pratinjau foto hasil watermark (mount saat dialog terbuka).
  */
-function PhotoPreviewContent({ photo, onClose }: { photo: Photo; onClose: () => void }) {
+function PhotoPreviewContent({
+  photo,
+  onClose,
+  onDownload,
+  onDelete,
+}: {
+  photo: Photo;
+  onClose: () => void;
+  onDownload?: (photo: Photo) => Promise<void> | void;
+  onDelete?: (photo: Photo) => Promise<void> | void;
+}) {
   const { showToast } = useToast();
 
   // URL objek dibuat langsung dari blob saat komponen di-mount
@@ -34,11 +46,22 @@ function PhotoPreviewContent({ photo, onClose }: { photo: Photo; onClose: () => 
     };
   }, [imageUrl]);
 
-  const handleDownload = () => {
-    const blobToDownload = photo.processedBlob || photo.originalBlob;
-    const filename = buildPhotoFilename(photo.snapshot.capturedAt);
-    downloadBlob(blobToDownload, filename);
-    showToast(`Foto diunduh: ${filename}`, "success");
+  const handleDownload = async () => {
+    if (onDownload) {
+      await onDownload(photo);
+    } else {
+      const blobToDownload = photo.processedBlob || photo.originalBlob;
+      const filename = buildPhotoFilename(photo.snapshot.capturedAt);
+      downloadBlob(blobToDownload, filename);
+      showToast(`Foto diunduh: ${filename}`, "success");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (onDelete) {
+      await onDelete(photo);
+      onClose();
+    }
   };
 
   const fileSizeKb = photo.processedBlob
@@ -55,9 +78,21 @@ function PhotoPreviewContent({ photo, onClose }: { photo: Photo; onClose: () => 
       description="Pratinjau foto ber-watermark resmi yang tersimpan di memori lokal perangkat Anda."
       footer={
         <div className="flex items-center justify-between w-full gap-2">
-          <Button variant="ghost" size="md" onClick={onClose}>
-            Tutup
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="md" onClick={onClose}>
+              Tutup
+            </Button>
+            {onDelete && (
+              <Button
+                variant="danger"
+                size="md"
+                onClick={handleDelete}
+                aria-label="Hapus foto ini"
+              >
+                Hapus
+              </Button>
+            )}
+          </div>
           <Button
             variant="primary"
             size="md"

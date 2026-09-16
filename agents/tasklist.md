@@ -1,6 +1,6 @@
 # Tasklist - GeoPatriot Web
 
-Progress: 56%
+Progress: 72%
 
 Catatan: Layer non-UI (Phase 0, types, lib) dikerjakan oleh Claude Code.
 Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
@@ -149,19 +149,39 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
 - [✓] ✅ Task V.1 - Smoke test end-to-end lintas layer (session -> photo -> watermark -> zip) `[Sedang]` (Selesai)
   - File dibuat: `src/lib/integration.smoke.test.ts`
 - [✓] ✅ Task V.2 - `pnpm typecheck`, `pnpm lint`, `pnpm test` seluruhnya lulus `[Mudah]` (Selesai)
-  - 47/47 unit test lulus (15 test suites), 0 error TypeScript, 0 error ESLint
+  - 51/51 unit test lulus (16 test suites), 0 error TypeScript, 0 error ESLint
 - [✓] ✅ Task V.3 - `pnpm build` lulus tanpa error Turbopack Next.js 16 `[Mudah]` (Selesai)
+
+## Phase 9 & 10 - Multi-Photo Session & Session Gallery Drawer
+
+- [✓] ✅ Task 9.1 - Multi-Photo Session Management & State `[Sedang]` (Selesai)
+  - Dibuat: `src/features/sessions/use-session-gallery.ts` (Hook pengelola multi-sesi, pergantian sesi aktif, pembuatan sesi baru, penghitungan `undownloadedCount`, multi-select, single download, batch ZIP compression, dan cascade delete sesi & foto)
+  - Dibuat: `src/features/sessions/use-session-gallery.test.ts` (Unit test pembentukan ZIP entries berurutan, eksekusi batch ZIP compression via fflate, status unduh, dan penghapusan foto/sesi di IndexedDB)
+  - Diperbarui: `src/features/camera/use-capture-pipeline.ts` (Mengekspos `currentSessionId`, `reloadSessionPhotos`, serta auto-reset `lastPhoto` saat galeri dikosongkan)
+- [✓] ✅ Task 10.1 - Session Gallery Drawer & Photo Grid UI `[Sedang]` (Selesai)
+  - Dibuat: `src/features/sessions/session-gallery-drawer.tsx` (BottomSheet drawer mobile-first dengan session switcher, indikator peringatan foto belum diunduh PRD #14, toolbar aksi multi-select, unduh ZIP terpilih/semua, dialog konfirmasi hapus aman Rules #8.7-#8.8, dan thumbnail grid interaktif)
+  - Dibuat: `src/features/sessions/index.ts` (Barrel export fitur sessions)
+  - Diperbarui: `src/components/icons/index.tsx` (Menambahkan `PlusIcon`, `ArchiveIcon`, `CheckSquareIcon`, `SquareIcon`)
+  - Diperbarui: `src/features/camera/camera-controls.tsx` (Mendukung rendering dinamis thumbnail foto terakhir dari sesi aktif via `GalleryThumbnailImage` dengan auto-cleanup Object URL)
+  - Diperbarui: `src/features/camera/photo-preview-dialog.tsx` (Menambahkan callback `onDownload` dan `onDelete` untuk pratinjau resolusi penuh langsung dari galeri)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Wiring tombol galeri thumb-zone langsung ke `SessionGalleryDrawer` dengan auto-sync data sesi dan foto kamera)
 
 ## Belum Dikerjakan (Next Steps)
 
-- [ ] Task 9.1 & 10.1 - Phase 9 & 10: Multi-Photo Session & Session Gallery Drawer (`src/features/sessions/`, grid galeri foto, preview drawer, delete, dan status downloaded)
-- [ ] Task 11.1 - Phase 11: Single & Batch ZIP Download Trigger (`src/features/downloads/`, ZIP generation via fflate)
+- [ ] Task 11.1 - Phase 11: Single & Batch ZIP Download Trigger & Progress UI (`src/features/downloads/`)
 - [ ] Task 12.1 - Phase 12: PWA Manifest & Service Worker
 - [ ] Task 13.1 - Phase 13: Settings Sheet & Storage Indicator
 
 ## Ringkasan Checkpoint Saat Ini
 
-Phase 5 (Capture Pipeline ke IndexedDB) dan Phase 6 (Rendering Watermark Resmi Lapangan ke Canvas) telah selesai 100%.
-Setiap kali tombol shutter ditekan, frame kamera beresolusi penuh ditangkap, snapshot metadata dibekukan, watermark berbingkai Deep Navy & Golden Ochre dengan stempel resmi logo aplikasi dicetak pada canvas, foto asli dan foto olahan disimpan ke IndexedDB, thumbnail tampil pada tombol galeri, dan dialog pratinjau memungkinkan unduhan instan.
-Seluruh 47 unit test lulus, 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
-Selanjutnya siap melanjutkan ke **Phase 9 & 10 (Session Gallery Drawer & Multi-Photo Management)**.
+Phase 9 (Multi-photo Session Management) dan Phase 10 (Session Gallery Drawer) telah selesai 100%.
+Pengguna kini dapat:
+1. Mengambil multi-foto dalam satu sesi atau berpindah antar sesi lapangan.
+2. Membuka galeri sesi dari tombol thumbnail pojok kiri bawah kamera.
+3. Melihat seluruh foto dalam kisi 2-3 kolom dengan badge status unduhan ("Diunduh" vs "Belum Diunduh").
+4. Memilih beberapa foto sekaligus (multi-select) atau seluruh foto ("Pilih Semua").
+5. Mengunduh foto terpilih atau seluruh sesi dalam satu berkas ZIP instan berbasis client-side (`fflate`).
+6. Membuka pratinjau foto resolusi tinggi ber-watermark untuk diunduh mandiri atau dihapus.
+7. Menghapus foto tertentu atau mengosongkan seluruh sesi dengan dialog konfirmasi aman (Rules #8.7, #8.8).
+Seluruh 51 unit test lulus (16 test suites), 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
+

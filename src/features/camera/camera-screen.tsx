@@ -1,19 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useCamera } from "./use-camera";
 import { CameraViewport } from "./camera-viewport";
 import { CameraControls } from "./camera-controls";
 import { useCapturePipeline } from "./use-capture-pipeline";
-import { PhotoPreviewDialog } from "./photo-preview-dialog";
+import { SessionGalleryDrawer } from "@/features/sessions";
 import { useGeolocation } from "@/features/location";
 import { useMetadataConfig, MetadataEditorSheet, getLocalTimezone } from "@/features/metadata";
 import { useWatermarkSettings } from "@/features/watermark";
 import { StatusChip, GpsQualityChip } from "@/components/ui/StatusChip";
 import { EditIcon, MapPinIcon, ClockIcon, SlidersIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
-import type { Photo } from "@/types/session";
 
 /**
  * Komponen layar utama Kamera GeoPatriot Web (Integrasi Phase 1-6).
@@ -54,7 +53,14 @@ export function CameraScreen() {
 
   const { settings: watermarkSettings } = useWatermarkSettings();
 
-  const { capturePhoto, isCapturing, lastPhoto, sessionPhotoCount } = useCapturePipeline({
+  const {
+    capturePhoto,
+    isCapturing,
+    lastPhoto,
+    sessionPhotoCount,
+    currentSessionId,
+    reloadSessionPhotos,
+  } = useCapturePipeline({
     videoRef,
     isCameraReady: cameraStatus === "ready",
     watermarkSettings,
@@ -69,20 +75,8 @@ export function CameraScreen() {
   const { showToast } = useToast();
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
   const [liveClock, setLiveClock] = useState<string>("");
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const thumbnailRef = useRef<string | null>(null);
-
-  // Revoke Object URL saat unmount untuk mencegah memory leak
-  useEffect(() => {
-    return () => {
-      if (thumbnailRef.current) {
-        URL.revokeObjectURL(thumbnailRef.current);
-      }
-    };
-  }, []);
 
   // Live timer untuk update jam di preview watermark HUD
   useEffect(() => {
@@ -115,15 +109,6 @@ export function CameraScreen() {
 
     const result = await capturePhoto();
     if (result.status === "success" && result.photo) {
-      const blob =
-        result.photo.thumbnailBlob || result.photo.processedBlob || result.photo.originalBlob;
-      if (thumbnailRef.current) {
-        URL.revokeObjectURL(thumbnailRef.current);
-      }
-      const newUrl = URL.createObjectURL(blob);
-      thumbnailRef.current = newUrl;
-      setThumbnailUrl(newUrl);
-
       const source = result.photo.snapshot.metadataSource.location.toUpperCase();
       const lat = result.photo.snapshot.coordinate.latitude.toFixed(4);
       const lon = result.photo.snapshot.coordinate.longitude.toFixed(4);
@@ -134,15 +119,10 @@ export function CameraScreen() {
   };
 
   /**
-   * Membuka pratinjau foto terakhir.
+   * Membuka Galeri Sesi (Phase 10).
    */
   const handleOpenGallery = () => {
-    if (lastPhoto) {
-      setSelectedPhoto(lastPhoto);
-      setIsPreviewOpen(true);
-    } else {
-      showToast("Belum ada foto yang diambil pada sesi ini.", "info");
-    }
+    setIsGalleryOpen(true);
   };
 
   // Koordinat & alamat aktif untuk ditampilkan pada Live HUD
@@ -321,7 +301,7 @@ export function CameraScreen() {
             sessionPhotoCount={sessionPhotoCount}
             onOpenGallery={handleOpenGallery}
             isCapturing={isCapturing}
-            thumbnailUrl={thumbnailUrl}
+            lastPhoto={lastPhoto}
           />
         </footer>
       )}
@@ -353,11 +333,17 @@ export function CameraScreen() {
         }}
       />
 
-      {/* Dialog Pratinjau Foto & Download Langsung (Phase 5 & 6) */}
-      <PhotoPreviewDialog
-        photo={selectedPhoto}
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
+      {/* Drawer Galeri Sesi (Phase 9 & 10) */}
+      <SessionGalleryDrawer
+        isOpen={isGalleryOpen}
+        onClose={() => {
+          setIsGalleryOpen(false);
+          void reloadSessionPhotos();
+        }}
+        activeSessionId={currentSessionId}
+        onPhotoDeleted={() => {
+          void reloadSessionPhotos();
+        }}
       />
     </div>
   );
