@@ -48,31 +48,41 @@ const CONTENT_SECURITY_POLICY = [
 const nextConfig: NextConfig = {
   allowedDevOrigins: getLocalDevOrigins(),
   async headers() {
+    const headers = [
+      {
+        key: "X-Content-Type-Options",
+        value: "nosniff",
+      },
+      {
+        key: "X-Frame-Options",
+        value: "SAMEORIGIN",
+      },
+      {
+        key: "Referrer-Policy",
+        value: "strict-origin-when-cross-origin",
+      },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(self), geolocation=(self), microphone=()",
+      },
+    ];
+
+    // CSP hanya diterapkan di production. `next dev` memakai eval() untuk
+    // fitur debugging React (reconstruct call stack dari sourcemap), yang
+    // akan diblokir CSP tanpa 'unsafe-eval' — dan React sendiri menegaskan
+    // eval() TIDAK PERNAH dipakai di production, jadi tidak perlu
+    // melonggarkan script-src produksi hanya demi dev server.
+    if (process.env.NODE_ENV === "production") {
+      headers.push({
+        key: "Content-Security-Policy",
+        value: CONTENT_SECURITY_POLICY,
+      });
+    }
+
     return [
       {
         source: "/:path*",
-        headers: [
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(self), geolocation=(self), microphone=()",
-          },
-          {
-            key: "Content-Security-Policy",
-            value: CONTENT_SECURITY_POLICY,
-          },
-        ],
+        headers,
       },
     ];
   },

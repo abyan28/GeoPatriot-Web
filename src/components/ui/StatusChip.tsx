@@ -37,6 +37,7 @@ export function StatusChip({
   subLabel,
   icon,
   tone = "zinc",
+  active = false,
   className = "",
   onClick,
   onKeyDown,
@@ -59,7 +60,7 @@ export function StatusChip({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-md transition-colors ${TONE_CLASSES[tone]} ${className}`}
+      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-md transition-colors ${TONE_CLASSES[tone]} ${active ? "animate-pulse" : ""} ${className}`}
       onClick={onClick}
       onKeyDown={isInteractive ? handleKeyDown : onKeyDown}
       tabIndex={tabIndex ?? (isInteractive ? 0 : undefined)}
