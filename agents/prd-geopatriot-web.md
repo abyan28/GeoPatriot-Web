@@ -103,12 +103,12 @@ Lokasi dan waktu harus dapat dikontrol sebelum pengambilan foto.
 
 MVP minimal mendukung kombinasi berikut:
 
-| Lokasi | Waktu | Perilaku |
-|---|---|---|
-| GPS | Otomatis | Lokasi dan waktu mengikuti kondisi pengambilan |
-| GPS | Manual | GPS aktual, timestamp ditentukan pengguna |
-| Manual | Otomatis | Lokasi tetap, waktu mengikuti pengambilan |
-| Manual | Manual | Lokasi dan waktu tetap sesuai input pengguna |
+| Lokasi | Waktu    | Perilaku                                       |
+| ------ | -------- | ---------------------------------------------- |
+| GPS    | Otomatis | Lokasi dan waktu mengikuti kondisi pengambilan |
+| GPS    | Manual   | GPS aktual, timestamp ditentukan pengguna      |
+| Manual | Otomatis | Lokasi tetap, waktu mengikuti pengambilan      |
+| Manual | Manual   | Lokasi dan waktu tetap sesuai input pengguna   |
 
 Untuk mode GPS, capture snapshot metadata dilakukan pada saat foto dibuat. Watermark menggunakan snapshot yang sama sehingga foto dan informasi metadata tidak saling berbeda.
 
@@ -374,24 +374,31 @@ Prinsip:
 ## 22. Error Handling
 
 ### Camera denied
+
 Tampilkan alasan, instruksi membuka permission browser, dan tombol coba lagi.
 
 ### GPS denied
+
 Izinkan manual location.
 
 ### GPS unavailable/poor
+
 Tetap izinkan capture dan tampilkan status kualitas.
 
 ### Reverse geocoding failed
+
 Gunakan fallback koordinat.
 
 ### Map failed
+
 Hilangkan map thumbnail atau tampilkan placeholder; capture tetap sukses.
 
 ### IndexedDB quota/full
+
 Hentikan penyimpanan foto baru dengan aman, tampilkan pesan yang jelas, dan sarankan download/hapus foto lama.
 
 ### ZIP failed
+
 Foto individual tetap tidak boleh hilang. Pengguna dapat mencoba ulang.
 
 ## 23. Security
@@ -423,34 +430,41 @@ Camera preview dan watermark harus disesuaikan dengan orientation layar dan dime
 ## 26. Acceptance Criteria MVP
 
 ### Camera
+
 - Pengguna dapat membuka camera preview di browser HTTPS.
 - Pengguna dapat mengambil foto.
 - Foto asli tidak ditimpa oleh hasil watermark.
 
 ### Metadata
+
 - Pengguna dapat memilih lokasi GPS/manual.
 - Pengguna dapat memilih waktu otomatis/manual.
 - Metadata yang dipilih terlihat pada preview dan hasil akhir.
 
 ### Session
+
 - Pengguna dapat mengambil banyak foto tanpa download satu per satu.
 - Foto tersimpan ke IndexedDB.
 - Foto dapat dilihat kembali setelah berpindah layar.
 
 ### Download
+
 - Satu foto dapat diunduh.
 - Foto terpilih dapat diunduh.
 - Semua foto sesi dapat diunduh sebagai ZIP.
 
 ### Offline
+
 - Capture manual tetap dapat berjalan tanpa internet setelah app siap.
 - Kegagalan LocationIQ tidak menggagalkan capture.
 
 ### PWA
+
 - Manifest dan service worker tersedia.
 - Asset penting dapat dicache.
 
 ### Deployment
+
 - Dapat dideploy ke Vercel.
 - Tidak membutuhkan database/server storage untuk MVP.
 
@@ -478,15 +492,17 @@ Camera preview dan watermark harus disesuaikan dengan orientation layar dan dime
 - LocationIQ Static Maps: https://docs.locationiq.com/docs/static-maps
 
 ## 29. Pedoman Pengerjaan AI (Tasklist Rules)
+
 Setiap kali selesai mengerjakan satu tugas/fitur, AI wajib memperbarui file `agents/tasklist.md` sebelum melaporkan hasil pengerjaan kepada user dengan ketentuan:
+
 1. Tandai task yang selesai dengan centang `[✓]`.
 2. Tambahkan emoji ✅ di depan task.
 3. Update progress keseluruhan proyek (misal: `Progress: 35%`).
 4. Tambahkan catatan singkat di bawah task mengenai file apa saja yang dibuat/diubah.
-   *Contoh:*
+   _Contoh:_
    ```markdown
    - [✓] ✅ Task 2.3 - Membuat Room Migration `[Mudah]` (Selesai)
-     * Membuat file `database/migrations/xxxx_create_students_table.php`
+     - Membuat file `database/migrations/xxxx_create_students_table.php`
    ```
 5. update tasklist.md setiap selesai 1 task.
 6. kasih summary jelas di akhir setiap task.
@@ -494,19 +510,20 @@ Setiap kali selesai mengerjakan satu tugas/fitur, AI wajib memperbarui file `age
 8. jadi nanti next agent tinggal baca task list dan tahu tepat mana yang dilanjut.
 
 ## 30. Pedoman Penulisan Coding/Pengerjaan Sistem
+
 - Berikan komentar dengan bahasa Indonesia untuk setiap fungsi kodingan yg dibuat, sehingga memudahkan programmer untuk memahami kodingannya.
 
 - ANTISLOP Skills
 
-     - Seluruh pengerjaan sistem, implementasi, UI, UX, serta teks yang ditampilkan pada antarmuka WAJIB mengikuti aturan ANTISLOP SKILLS yang tersedia dan telah terpasang pada environment AI agent yang digunakan.
-     - Agent WAJIB membaca dan menerapkan skill ANTISLOP SKILLS yang relevan terhadap pekerjaan yang sedang dilakukan sebelum menghasilkan atau memodifikasi output. Jangan menduplikasi isi aturan ANTISLOP ke dalam PRD atau rules ini; gunakan skill yang terpasang sebagai sumber aturan yang berlaku.
-     - Aturan ini berlaku lintas AI coding agent, termasuk OpenCode, Claude Code, Antigravity, Codex, Cursor, Gemini CLI, Hermes, dan agent lain yang mendukung Agent Skills.
-     - Jika terdapat konflik antara instruksi proyek dengan aturan ANTISLOP, ikuti aturan yang memiliki prioritas lebih tinggi sesuai instruction hierarchy, tetapi jangan mengabaikan ANTISLOP hanya karena output secara teknis sudah berfungsi.
-     - Untuk pekerjaan yang berkaitan dengan:
-          - UI/visual → terapkan antislop-ui
-          - Copywriting/teks → terapkan antislop-copywriting
-          - Accessibility/human factors → terapkan antislop-human
-          - Responsive/mobile layout → terapkan antislop-layoutmobile
-          - Code comments → terapkan antislop-code
-          - Pekerjaan umum → terapkan core antislop
-     - Sebelum delivery, output harus melewati ANTISLOP Delivery Gate dan tidak boleh dikirim sebagai hasil final apabila masih melanggar aturan yang relevan.
+  - Seluruh pengerjaan sistem, implementasi, UI, UX, serta teks yang ditampilkan pada antarmuka WAJIB mengikuti aturan ANTISLOP SKILLS yang tersedia dan telah terpasang pada environment AI agent yang digunakan.
+  - Agent WAJIB membaca dan menerapkan skill ANTISLOP SKILLS yang relevan terhadap pekerjaan yang sedang dilakukan sebelum menghasilkan atau memodifikasi output. Jangan menduplikasi isi aturan ANTISLOP ke dalam PRD atau rules ini; gunakan skill yang terpasang sebagai sumber aturan yang berlaku.
+  - Aturan ini berlaku lintas AI coding agent, termasuk OpenCode, Claude Code, Antigravity, Codex, Cursor, Gemini CLI, Hermes, dan agent lain yang mendukung Agent Skills.
+  - Jika terdapat konflik antara instruksi proyek dengan aturan ANTISLOP, ikuti aturan yang memiliki prioritas lebih tinggi sesuai instruction hierarchy, tetapi jangan mengabaikan ANTISLOP hanya karena output secara teknis sudah berfungsi.
+  - Untuk pekerjaan yang berkaitan dengan:
+    - UI/visual → terapkan antislop-ui
+    - Copywriting/teks → terapkan antislop-copywriting
+    - Accessibility/human factors → terapkan antislop-human
+    - Responsive/mobile layout → terapkan antislop-layoutmobile
+    - Code comments → terapkan antislop-code
+    - Pekerjaan umum → terapkan core antislop
+  - Sebelum delivery, output harus melewati ANTISLOP Delivery Gate dan tidak boleh dikirim sebagai hasil final apabila masih melanggar aturan yang relevan.

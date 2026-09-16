@@ -9,9 +9,11 @@ Urutan harus menjaga agar setiap tahap menghasilkan sistem yang dapat dijalankan
 ## 2. Phase 0 - Repository dan Baseline
 
 ### Tujuan
+
 Menyiapkan repository web tanpa mengubah repository Flutter secara sembrono.
 
 ### Langkah
+
 1. Buat project Next.js + TypeScript.
 2. Gunakan App Router.
 3. Tambahkan linting/formatting.
@@ -47,6 +49,7 @@ public/
 ## 3. Phase 1 - App Shell dan Design System
 
 ### Output
+
 - layout mobile-first
 - theme
 - typography
@@ -60,6 +63,7 @@ public/
 - empty state
 
 ### Test
+
 - portrait mobile
 - landscape mobile
 - desktop fallback
@@ -67,14 +71,17 @@ public/
 ## 4. Phase 2 - Camera Proof of Concept
 
 ### Tujuan
+
 Memastikan browser benar-benar dapat mengakses kamera.
 
 ### Implementasi
+
 Gunakan `navigator.mediaDevices.getUserMedia()`.
 
 Camera permission hanya diminta saat user memasuki fitur kamera atau menekan aksi yang membutuhkan kamera.
 
 ### Acceptance
+
 - preview tampil
 - rear camera dapat dipilih bila tersedia
 - kamera dapat dihentikan
@@ -84,6 +91,7 @@ Camera permission hanya diminta saat user memasuki fitur kamera atau menekan aks
 ## 5. Phase 3 - Geolocation
 
 ### Implementasi
+
 Gunakan `navigator.geolocation`.
 
 Simpan:
@@ -97,6 +105,7 @@ timestamp
 ```
 
 ### Status
+
 Hitung kategori kualitas:
 
 ```text
@@ -107,6 +116,7 @@ Hitung kategori kualitas:
 ```
 
 ### Acceptance
+
 - user melihat status GPS
 - GPS gagal tidak memblokir camera
 - manual location tersedia sebagai fallback
@@ -124,6 +134,7 @@ Time Mode
 ```
 
 ### Manual Location
+
 Minimal mendukung:
 
 - latitude
@@ -134,11 +145,13 @@ Minimal mendukung:
 Bila memungkinkan, sediakan pencarian lokasi melalui provider.
 
 ### Manual Time
+
 - date picker
 - time picker
 - timezone display
 
 ### Aturan
+
 Metadata yang sedang aktif harus selalu terlihat di camera screen.
 
 ## 7. Phase 5 - Capture Pipeline
@@ -309,9 +322,11 @@ Toolbar:
 ## 13. Phase 11 - Download Engine
 
 ### Single
+
 Blob -> object URL -> browser download.
 
 ### Multiple
+
 ```text
 Selected photos
    ↓
@@ -341,6 +356,7 @@ Jangan cache response yang berpotensi menyimpan data lokasi pengguna secara tida
 Settings minimal:
 
 ### Watermark
+
 - template
 - position
 - opacity
@@ -350,11 +366,13 @@ Settings minimal:
 - custom text
 
 ### Location
+
 - provider
 - GPS behavior
 - fallback behavior
 
 ### Storage
+
 - storage usage indicator bila tersedia
 - clear downloaded/old sessions
 - clear all local data
@@ -445,12 +463,15 @@ Ukur:
 ## 20. Phase 18 - Vercel Deployment
 
 ### Preview
+
 Push branch → Vercel preview deployment.
 
 ### Production
+
 Merge stable branch → production deployment.
 
 ### Environment variables
+
 Gunakan environment variable untuk konfigurasi provider.
 
 Catatan: environment variable yang dikirim ke client bundle bukan secret. Jangan memasukkan credential yang harus benar-benar rahasia ke client.
@@ -458,6 +479,7 @@ Catatan: environment variable yang dikirim ke client bundle bukan secret. Jangan
 ## 21. Phase 19 - Release Checklist
 
 ### Functional
+
 - camera
 - GPS
 - manual location
@@ -471,17 +493,20 @@ Catatan: environment variable yang dikirim ke client bundle bukan secret. Jangan
 - PWA
 
 ### Privacy
+
 - no photo upload
 - clear local data option
 - permission explanations
 - LocationIQ attribution
 
 ### Compatibility
+
 - Android Chrome
 - iPhone Safari
 - desktop Chrome/Edge untuk fallback/testing
 
 ### Deployment
+
 - Vercel production
 - HTTPS
 - environment variables

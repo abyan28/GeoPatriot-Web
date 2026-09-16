@@ -44,7 +44,9 @@ describe("startCamera", () => {
 describe("stopCamera", () => {
   it("menghentikan semua track pada stream", () => {
     const stopFn = vi.fn();
-    const fakeStream = { getTracks: () => [{ stop: stopFn }, { stop: stopFn }] } as unknown as MediaStream;
+    const fakeStream = {
+      getTracks: () => [{ stop: stopFn }, { stop: stopFn }],
+    } as unknown as MediaStream;
     stopCamera(fakeStream);
     expect(stopFn).toHaveBeenCalledTimes(2);
   });

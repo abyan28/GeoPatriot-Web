@@ -66,7 +66,6 @@ export function getDb(): Promise<IDBPDatabase<GeoPatriotDbSchema>> {
  */
 export function isQuotaExceededError(error: unknown): boolean {
   return (
-    error instanceof DOMException &&
-    (error.name === "QuotaExceededError" || error.code === 22)
+    error instanceof DOMException && (error.name === "QuotaExceededError" || error.code === 22)
   );
 }

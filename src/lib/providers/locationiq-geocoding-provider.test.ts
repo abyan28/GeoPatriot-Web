@@ -34,10 +34,7 @@ describe("LocationIqGeocodingProvider", () => {
   });
 
   it("mengembalikan network-error bila fetch gagal total", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new Error("offline")),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const provider = new LocationIqGeocodingProvider("dummy-key");
     const result = await provider.reverseGeocode(-6.2, 106.8);
     expect(result.status).toBe("failure");

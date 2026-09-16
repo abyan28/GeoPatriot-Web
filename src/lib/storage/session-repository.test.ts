@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Session } from "@/types/session";
-import {
-  createSession,
-  deleteSession,
-  getSession,
-  listSessions,
-} from "./session-repository";
+import { createSession, deleteSession, getSession, listSessions } from "./session-repository";
 
 function buildSession(overrides: Partial<Session> = {}): Session {
   return {

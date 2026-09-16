@@ -49,8 +49,7 @@ function defaultCanvasFactory(width: number, height: number): CanvasLike {
 
 /** Hasil proses watermark: sukses dengan Blob, atau gagal dengan alasan eksplisit. */
 export type WatermarkRenderResult =
-  | { status: "success"; blob: Blob }
-  | { status: "error"; message: string };
+  { status: "success"; blob: Blob } | { status: "error"; message: string };
 
 export interface RenderWatermarkOptions {
   sourceImage: CanvasImageSourceLike;
@@ -100,7 +99,10 @@ export function renderWatermark(options: RenderWatermarkOptions): Promise<Waterm
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            resolve({ status: "error", message: "Gagal meng-encode hasil watermark (toBlob null)." });
+            resolve({
+              status: "error",
+              message: "Gagal meng-encode hasil watermark (toBlob null).",
+            });
             return;
           }
           resolve({ status: "success", blob });
@@ -134,7 +136,10 @@ function drawWatermarkPanel(
 
   const lineHeight = settings.fontSizePx * LINE_HEIGHT_MULTIPLIER;
   const panelHeight = settings.marginPx * 2 + lines.length * lineHeight;
-  const panelY = settings.position === "bottom" ? canvasHeight - panelHeight - settings.marginPx : settings.marginPx;
+  const panelY =
+    settings.position === "bottom"
+      ? canvasHeight - panelHeight - settings.marginPx
+      : settings.marginPx;
 
   ctx.save();
   ctx.globalAlpha = settings.opacity;

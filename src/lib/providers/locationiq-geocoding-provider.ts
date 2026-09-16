@@ -1,8 +1,4 @@
-import type {
-  GeocodingProvider,
-  ProviderResult,
-  ReverseGeocodeResult,
-} from "@/types/provider";
+import type { GeocodingProvider, ProviderResult, ReverseGeocodeResult } from "@/types/provider";
 
 /**
  * Implementasi GeocodingProvider menggunakan LocationIQ Reverse Geocoding.

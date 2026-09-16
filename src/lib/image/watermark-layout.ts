@@ -32,7 +32,9 @@ export function buildWatermarkTextLines(
     lines.push({ text: snapshot.address });
   }
   if (visibleFields.coordinate) {
-    lines.push({ text: formatCoordinate(snapshot.coordinate.latitude, snapshot.coordinate.longitude) });
+    lines.push({
+      text: formatCoordinate(snapshot.coordinate.latitude, snapshot.coordinate.longitude),
+    });
   }
 
   const dateTimeParts: string[] = [];

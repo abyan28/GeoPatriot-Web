@@ -17,7 +17,15 @@ export function buildPhotoFilename(capturedAtIso: string, extension = "jpg"): st
 /** Membuat nama file ZIP untuk unduhan batch/all, berdasarkan waktu pembuatan ZIP. */
 export function buildZipFilename(createdAt: Date = new Date()): string {
   const pad = (value: number) => String(value).padStart(2, "0");
-  const datePart = [createdAt.getFullYear(), pad(createdAt.getMonth() + 1), pad(createdAt.getDate())].join("-");
-  const timePart = [pad(createdAt.getHours()), pad(createdAt.getMinutes()), pad(createdAt.getSeconds())].join("-");
+  const datePart = [
+    createdAt.getFullYear(),
+    pad(createdAt.getMonth() + 1),
+    pad(createdAt.getDate()),
+  ].join("-");
+  const timePart = [
+    pad(createdAt.getHours()),
+    pad(createdAt.getMinutes()),
+    pad(createdAt.getSeconds()),
+  ].join("-");
   return `GeoPatriot_Session_${datePart}_${timePart}.zip`;
 }

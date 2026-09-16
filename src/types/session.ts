@@ -8,10 +8,7 @@ import type { WatermarkVisualSettings } from "./watermark";
 
 /** Empat pola penggunaan session minimal MVP (PRD #12). */
 export type SessionMode =
-  | "fixed"
-  | "gps-auto-time"
-  | "fixed-location-auto-time"
-  | "gps-manual-time";
+  "fixed" | "gps-auto-time" | "fixed-location-auto-time" | "gps-manual-time";
 
 /** Status pemrosesan satu foto dalam pipeline watermark. */
 export type PhotoProcessingStatus = "pending" | "processing" | "done" | "failed";

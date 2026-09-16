@@ -12,15 +12,11 @@
  * fungsi provider sendiri hanya pernah resolve ke "success" atau "failure", tidak pernah throw.
  */
 export type ProviderResult<T> =
-  | { status: "success"; data: T }
-  | { status: "failure"; reason: ProviderFailureReason };
+  { status: "success"; data: T } | { status: "failure"; reason: ProviderFailureReason };
 
 /** Alasan kegagalan provider, dipakai untuk menentukan fallback yang tepat (rules #6.6-6.7). */
 export type ProviderFailureReason =
-  | "network-error"
-  | "rate-limited"
-  | "invalid-response"
-  | "not-configured";
+  "network-error" | "rate-limited" | "invalid-response" | "not-configured";
 
 /** Hasil reverse geocoding: nama lokasi dan alamat dari koordinat. */
 export interface ReverseGeocodeResult {
