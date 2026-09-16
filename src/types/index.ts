@@ -4,3 +4,4 @@ export * from "./watermark";
 export * from "./session";
 export * from "./provider";
 export * from "./storage";
+export * from "./diagnostics";

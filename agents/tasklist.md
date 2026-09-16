@@ -1,6 +1,6 @@
 # Tasklist - GeoPatriot Web
 
-Progress: 95%
+Progress: 97%
 
 Catatan: Layer non-UI (Phase 0, types, lib) dikerjakan oleh Claude Code.
 Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
@@ -212,19 +212,35 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
   - Dibuat: `src/features/settings/settings.test.ts` (Unit test pembersihan foto terunduh, reset seluruh store IDB, dan inisialisasi default settings)
   - Diperbarui: `src/features/camera/camera-screen.tsx` (Integrasi tombol SettingsIcon di top header, sinkronisasi live watermark HUD & capture pipeline dengan `useAppSettings`, dan rendering `SettingsSheet`)
 
+## Phase 14 - Error/Permission UX & Explicit States
+
+- [✓] ✅ Task 14.1 - Error/Permission UX & Explicit States Audit `[Sedang]` (Selesai)
+  - Dibuat: `src/types/diagnostics.ts` (Tipe state eksplisit sesuai `workflow-geopatriot-web.md` #16: `camera_idle`/`requesting`/`ready`/`denied`/`error`, `camera_zoom_supported`/`unsupported`/`error`, `gps_idle`/`searching`/`ready`/`denied`/`error`, `geocoding_loading`/`success`/`error`, `map_loading`/`success`/`error`, `storage_ok`/`warning`/`full`, dan kontrak `SystemHealthDiagnostics`)
+  - Dibuat: `src/types/index.ts` (Mengekspor modul types diagnostics)
+  - Dibuat: `src/features/diagnostics/use-system-diagnostics.ts` (Fungsi murni `evaluateSystemDiagnostics` dan hook `useSystemDiagnostics` untuk memetakan kesehatan subsistem, evaluasi ambang batas storage warning >=80% dan full >=95%, sinyal GPS buruk >50m, serta rekomendasi aksi lapangan)
+  - Dibuat: `src/features/diagnostics/diagnostics-modal.tsx` (Drawer status sistem interaktif yang menampilkan 6 kartu status subsistem, indikator kuota, panduan izin peramban untuk iOS Safari & Android Chrome, serta tombol pemulihan cepat)
+  - Dibuat: `src/features/diagnostics/storage-warning-banner.tsx` (Banner peringatan kapasitas memori IndexedDB proaktif dengan tombol kelola/pembersihan foto)
+  - Dibuat: `src/features/diagnostics/gps-fallback-alert.tsx` (Banner peringatan sinyal GPS dengan tombol instan beralih ke Mode Manual agar surveyor tidak terhambat di lapangan)
+  - Dibuat: `src/features/diagnostics/index.ts` (Barrel export modul diagnostics)
+  - Dibuat: `src/features/diagnostics/diagnostics.test.ts` (Unit test pemetaan state optimal, deteksi izin ditolak, ambang storage warning/full, GPS buruk, dan mode offline fallback)
+  - Diperbarui: `src/features/camera/camera-screen.tsx` (Integrasi tombol diagnostik logo emblem di top bar, rendering banner peringatan proaktif, dan modal `DiagnosticsModal`)
+
 ## Belum Dikerjakan (Next Steps)
 
-- [ ] Task 14.1 - Phase 14: Error/Permission UX & Auditing Edge Cases
+- [ ] Task 15.1 - Phase 15: iPhone Safari Testing & Verification (Touch-action, WebKit zoom constraints fallback, orientation)
+- [ ] Task 16.1 - Phase 16: Android Chrome Testing & PWA Install Audit
+- [ ] Task 17.1 - Phase 17: Performance & Stress Testing (Benchmark 10, 25, 50, 100 foto)
+- [ ] Task 18.1 - Phase 18: Vercel Deployment Preparation & Production Checklist
+- [ ] Task 19.1 - Phase 19: Final Release Checklist & Definition of Done (DoD) Audit
 
 ## Ringkasan Checkpoint Saat Ini
 
-Phase 13 (Settings Sheet & Storage Indicator) telah selesai 100%.
+Phase 14 (Error/Permission UX & Explicit States) telah selesai 100%.
 Pengguna kini dapat:
-1. Membuka drawer pengaturan GeoPatriot langsung dari tombol gear di top bar header kamera.
-2. Mengonfigurasi preferensi Watermark secara visual (pilihan template Default/Ringkas/Detail, posisi Atas/Bawah, slider transparansi latar, toggle visibilitas 8 komponen watermark, dan teks instansi/catatan kustom) dengan efek instan pada viewfinder HUD dan foto yang ditangkap.
-3. Mengatur preferensi Lokasi & GPS (pilihan penyedia geocoding LocationIQ vs Offline Fallback, opsi GPS High Accuracy, dan auto-fallback ke mode manual saat sinyal hilang).
-4. Memantau kapasitas memori browser secara live dengan progress bar persentase kuota (`navigator.storage.estimate()`), penghitung total foto, total sesi, dan foto yang telah diunduh.
-5. Menjalankan fitur pembersihan aman "Bersihkan Foto yang Sudah Diunduh" (Rules #10.5 & PRD #14) yang menghapus foto dengan flag `downloaded: true` tanpa menghilangkan foto yang belum diunduh.
-6. Menjalankan "Hapus Semua Data Lokal" dengan dialog konfirmasi modal berkunci aman.
-Seluruh 69 unit test lulus (19 test suites), 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
+1. Membuka panel "Diagnostik Sistem Lapangan" secara langsung dengan mengetuk emblem logo GeoPatriot pada header kamera.
+2. Memantau kesehatan 6 subsistem utama secara eksplisit (`camera`, `cameraZoom`, `gps`, `geocoding`, `map`, `storage`) dengan kode status transparan.
+3. Menerima panduan pemulihan izin kamera dan GPS yang ramah dan spesifik untuk Android Chrome dan iOS Safari.
+4. Mendapatkan banner peringatan otomatis saat kapasitas memori IndexedDB mencapai ambang batas warning (>=80%) atau full (>=95%) dengan aksi cepat ke menu pembersihan.
+5. Mendapatkan notifikasi dan tawaran langsung beralih ke Mode Manual saat izin GPS ditolak atau saat akurasi GPS lapangan menurun drastis (>50m).
+Seluruh 74 unit test lulus (20 test suites), 0 error TypeScript, 0 error ESLint, dan build produksi Next.js 16 Turbopack sukses.
 

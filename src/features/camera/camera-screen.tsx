@@ -10,6 +10,12 @@ import { SessionGalleryDrawer } from "@/features/sessions";
 import { useGeolocation } from "@/features/location";
 import { useMetadataConfig, MetadataEditorSheet, getLocalTimezone } from "@/features/metadata";
 import { useAppSettings, SettingsSheet } from "@/features/settings";
+import {
+  useSystemDiagnostics,
+  DiagnosticsModal,
+  StorageWarningBanner,
+  GpsFallbackAlert,
+} from "@/features/diagnostics";
 import { StatusChip, GpsQualityChip } from "@/components/ui/StatusChip";
 import { EditIcon, MapPinIcon, ClockIcon, SlidersIcon, SettingsIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
@@ -83,7 +89,20 @@ export function CameraScreen() {
   const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
   const [liveClock, setLiveClock] = useState<string>("");
+
+  // Evaluasi diagnostik kesehatan subsistem (Phase 14 / workflow #16)
+  const diagnostics = useSystemDiagnostics({
+    cameraStatus,
+    zoomCapabilities,
+    geoStatus,
+    geoCoordinate: geoCoord,
+    isResolvingAddress: false,
+    hasResolvedAddress: Boolean(geoAddress?.locationName || geoAddress?.address),
+    storageInfo: appSettings.storageInfo,
+    isOnline: typeof navigator !== "undefined" ? navigator.onLine : true,
+  });
 
   // Live timer untuk update jam di preview watermark HUD
   useEffect(() => {
@@ -148,7 +167,14 @@ export function CameraScreen() {
     <div className="relative w-full h-[100dvh] max-w-md mx-auto bg-[#08111d] flex flex-col justify-between overflow-hidden shadow-2xl">
       {/* Top Header Bar: Branding & GPS Status Chip (Clickable) */}
       <header className="absolute top-0 inset-x-0 z-30 pt-4 pb-3 px-4 bg-gradient-to-b from-[#08111d]/95 via-[#08111d]/60 to-transparent flex items-center justify-between pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-2.5">
+        {/* Branding Logo: Ketuk untuk membuka Diagnostik Kesehatan Sistem (Phase 14) */}
+        <button
+          type="button"
+          onClick={() => setIsDiagnosticsOpen(true)}
+          aria-label="Buka Diagnostik Kesehatan Sistem"
+          title="Diagnostik Kesehatan Sistem"
+          className="pointer-events-auto flex items-center gap-2.5 text-left active:scale-95 transition-transform group"
+        >
           <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-lg border border-[#c5984f]/60 bg-[#08111d] flex items-center justify-center shrink-0">
             <Image
               src="/app-icon.png"
@@ -158,16 +184,22 @@ export function CameraScreen() {
               className="object-cover"
               priority
             />
+            {/* Status Dot Indikator Diagnostik */}
+            {diagnostics.hasErrors ? (
+              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-[#08111d] animate-pulse" />
+            ) : diagnostics.hasWarnings ? (
+              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-[#08111d]" />
+            ) : null}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-black text-white tracking-wide leading-tight drop-shadow-md">
+            <span className="text-sm font-black text-white tracking-wide leading-tight drop-shadow-md group-hover:text-[#dcab55] transition-colors">
               GeoPatriot
             </span>
             <span className="text-[10px] font-semibold text-[#dcab55] tracking-tight leading-none drop-shadow">
               GPS Camera
             </span>
           </div>
-        </div>
+        </button>
 
         {/* GPS / Manual Status Chip & Tombol Pengaturan Cepat (Phase 13) */}
         <div className="pointer-events-auto flex items-center gap-2">
@@ -234,6 +266,25 @@ export function CameraScreen() {
           </button>
         </div>
       </header>
+
+      {/* Banner Peringatan Diagnostik & Fallback Proaktif (Phase 14) */}
+      <div className="absolute top-[62px] inset-x-0 z-25 pointer-events-auto flex flex-col">
+        <StorageWarningBanner
+          storageState={diagnostics.storage}
+          percentUsed={diagnostics.storagePercentUsed}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+        <GpsFallbackAlert
+          gpsState={diagnostics.gps}
+          gpsAccuracy={diagnostics.gpsAccuracy}
+          locationMode={locationMode}
+          onSwitchToManual={() => {
+            setLocationMode("manual");
+            setIsMetadataSheetOpen(true);
+            showToast("Beralih ke mode lokasi manual", "info");
+          }}
+        />
+      </div>
 
       {/* Main Viewport */}
       <main className="w-full h-full flex-1 flex flex-col">
@@ -381,6 +432,25 @@ export function CameraScreen() {
           void reloadSessionPhotos();
         }}
         settingsHook={appSettings}
+      />
+
+      {/* Drawer Diagnostik Kesehatan Sistem & Panduan Izin (Phase 14) */}
+      <DiagnosticsModal
+        isOpen={isDiagnosticsOpen}
+        onClose={() => setIsDiagnosticsOpen(false)}
+        diagnostics={diagnostics}
+        onOpenSettings={() => {
+          setIsDiagnosticsOpen(false);
+          setIsSettingsOpen(true);
+        }}
+        onOpenManualLocation={() => {
+          setIsDiagnosticsOpen(false);
+          setLocationMode("manual");
+          setIsMetadataSheetOpen(true);
+        }}
+        onRefreshGps={() => {
+          void refreshGps();
+        }}
       />
     </div>
   );
