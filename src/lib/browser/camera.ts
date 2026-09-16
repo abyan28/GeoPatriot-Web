@@ -60,7 +60,11 @@ export async function startCamera(
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode },
+      // width/height "ideal" (bukan exact/min) diminta agar browser mencoba
+      // resolusi sensor tinggi tanpa memicu OverconstrainedError pada device
+      // dengan kamera lebih rendah — tanpa constraint ini browser sering
+      // memilih default rendah (mis. 640x480) walau sensor mendukung lebih.
+      video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false,
     });
     return { status: "ready", stream };
