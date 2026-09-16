@@ -52,6 +52,12 @@ export function useCapturePipeline({
 
   // Cache elemen logo aplikasi resmi di memori agar cepat dirender tanpa delay jaringan
   const logoImageRef = useRef<HTMLImageElement | null>(null);
+  // Lock idempotency di level fungsi (bukan hanya UI) agar shutter yang dipencet
+  // dua kali sangat cepat tidak memicu dua capture paralel (race condition guard).
+  const isCapturingRef = useRef(false);
+  // Cache promise session yang sedang dibuat agar dua capture yang terjadi
+  // hampir bersamaan tidak masing-masing membuat session baru (TOCTOU guard).
+  const ensureSessionPromiseRef = useRef<Promise<string> | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -69,29 +75,47 @@ export function useCapturePipeline({
   const ensureActiveSession = useCallback(async (): Promise<string> => {
     if (currentSessionId) return currentSessionId;
 
-    try {
-      const existingSessionsResult = await listSessions();
-      if (existingSessionsResult.status === "success" && existingSessionsResult.data.length > 0) {
-        const latestSession = existingSessionsResult.data[0];
-        setCurrentSessionId(latestSession.id);
-        return latestSession.id;
-      }
-    } catch {
-      // Abaikan jika database baru pertama kali diakses
+    // Bila sudah ada proses pembuatan session yang berjalan, gunakan promise yang
+    // sama alih-alih membuat dua session baru secara bersamaan (TOCTOU guard).
+    if (ensureSessionPromiseRef.current) {
+      return ensureSessionPromiseRef.current;
     }
 
-    // Buat session baru bila belum ada
-    const newSessionId = `session_${Date.now()}`;
-    const newSession: Session = {
-      id: newSessionId,
-      createdAt: new Date().toISOString(),
-      mode: "gps-auto-time",
-      watermarkSettings,
-    };
+    const creationPromise = (async (): Promise<string> => {
+      try {
+        const existingSessionsResult = await listSessions();
+        if (
+          existingSessionsResult.status === "success" &&
+          existingSessionsResult.data.length > 0
+        ) {
+          const latestSession = existingSessionsResult.data[0];
+          setCurrentSessionId(latestSession.id);
+          return latestSession.id;
+        }
+      } catch {
+        // Abaikan jika database baru pertama kali diakses
+      }
 
-    await createSession(newSession);
-    setCurrentSessionId(newSessionId);
-    return newSessionId;
+      // Buat session baru bila belum ada
+      const newSessionId = `session_${Date.now()}`;
+      const newSession: Session = {
+        id: newSessionId,
+        createdAt: new Date().toISOString(),
+        mode: "gps-auto-time",
+        watermarkSettings,
+      };
+
+      await createSession(newSession);
+      setCurrentSessionId(newSessionId);
+      return newSessionId;
+    })();
+
+    ensureSessionPromiseRef.current = creationPromise;
+    try {
+      return await creationPromise;
+    } finally {
+      ensureSessionPromiseRef.current = null;
+    }
   }, [currentSessionId, watermarkSettings]);
 
   /**
@@ -186,6 +210,15 @@ export function useCapturePipeline({
    * 5. Penyimpanan ke IndexedDB
    */
   const capturePhoto = useCallback(async (): Promise<CaptureResult> => {
+    // Guard idempotency di level fungsi: menolak capture kedua bila capture
+    // sebelumnya belum selesai, terlepas dari apakah UI sudah re-render (rules #7).
+    if (isCapturingRef.current) {
+      return {
+        status: "error",
+        errorMessage: "Sedang memproses foto sebelumnya.",
+      };
+    }
+
     if (!isCameraReady || !videoRef.current) {
       return {
         status: "error",
@@ -193,6 +226,7 @@ export function useCapturePipeline({
       };
     }
 
+    isCapturingRef.current = true;
     setIsCapturing(true);
 
     try {
@@ -202,7 +236,6 @@ export function useCapturePipeline({
       // 2. Tangkap frame video kamera asli
       const frameResult = await captureVideoFrame(videoRef.current);
       if (frameResult.status !== "success" || !frameResult.originalBlob) {
-        setIsCapturing(false);
         return {
           status: "error",
           errorMessage: frameResult.errorMessage || "Gagal mengambil frame kamera.",
@@ -223,9 +256,11 @@ export function useCapturePipeline({
           sourceImage: sourceImageSource,
           sourceWidth: frameResult.width || 1080,
           sourceHeight: frameResult.height || 1920,
+          // Catatan: mapThumbnailUrl/providerAttribution belum diwire ke provider
+          // peta manapun (drawWatermarkPanel juga belum merender field ini) —
+          // lihat agents/tasklist.md untuk status fitur map thumbnail watermark.
           data: {
             snapshot,
-            providerAttribution: "GeoPatriot",
           },
           settings: watermarkSettings,
           logoImage: logoImageRef.current || undefined,
@@ -256,7 +291,6 @@ export function useCapturePipeline({
 
       const saveResult = await addPhoto(newPhoto);
       if (saveResult.status !== "success") {
-        setIsCapturing(false);
         return {
           status: "error",
           errorMessage: saveResult.message || "Gagal menyimpan foto ke penyimpanan lokal.",
@@ -266,18 +300,19 @@ export function useCapturePipeline({
       // 6. Perbarui state UI galeri
       setSessionPhotos((prev) => [...prev, newPhoto]);
       setLastPhoto(newPhoto);
-      setIsCapturing(false);
 
       return {
         status: "success",
         photo: newPhoto,
       };
     } catch (err) {
-      setIsCapturing(false);
       return {
         status: "error",
         errorMessage: err instanceof Error ? err.message : "Terjadi kesalahan saat memproses foto.",
       };
+    } finally {
+      isCapturingRef.current = false;
+      setIsCapturing(false);
     }
   }, [isCameraReady, videoRef, createSnapshot, watermarkSettings, ensureActiveSession]);
 

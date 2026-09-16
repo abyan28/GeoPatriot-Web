@@ -267,6 +267,7 @@ function MetadataEditorContent({
                       locationName: e.target.value,
                     }))
                   }
+                  maxLength={100}
                   className="w-full min-h-[40px] px-2.5 py-1.5 rounded-lg bg-[#0e2035] border border-[#2f6d8b]/40 text-white text-xs focus:border-[#c5984f] focus:outline-none"
                   placeholder="Mis. Posko Pengamatan Blok B"
                 />
@@ -285,6 +286,7 @@ function MetadataEditorContent({
                       address: e.target.value,
                     }))
                   }
+                  maxLength={120}
                   className="w-full min-h-[40px] px-2.5 py-1.5 rounded-lg bg-[#0e2035] border border-[#2f6d8b]/40 text-white text-xs focus:border-[#c5984f] focus:outline-none"
                   placeholder="Mis. Desa Sukamaju, Kec. Sepaku"
                 />

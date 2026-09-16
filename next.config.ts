@@ -6,7 +6,7 @@ import os from "node:os";
  * akses dev resources (HMR, font, chunk JS) saat diuji via smartphone di jaringan Wi-Fi lokal.
  */
 function getLocalDevOrigins(): string[] {
-  const origins = new Set<string>(["localhost", "192.168.100.10"]);
+  const origins = new Set<string>(["localhost"]);
   try {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {

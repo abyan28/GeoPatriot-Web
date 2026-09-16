@@ -39,3 +39,19 @@ body {
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
 }
+
+/*
+ * Hormati preferensi sistem "reduce motion" (Rules #16, PRD #24).
+ * Menekan seluruh animasi/transisi CSS ke durasi minimal, termasuk efek
+ * flash shutter kamera yang berpotensi memicu photosensitivity.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

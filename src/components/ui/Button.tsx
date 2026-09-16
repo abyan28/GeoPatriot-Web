@@ -38,7 +38,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     // Ukuran tombol (tinggi minimal 44px untuk touch target ramah ibu jari)
     const sizeClasses: Record<ButtonSize, string> = {
-      sm: "min-h-[40px] px-3 py-1.5 text-xs rounded-lg gap-1.5",
+      sm: "min-h-[44px] px-3 py-1.5 text-xs rounded-lg gap-1.5",
       md: "min-h-[48px] px-4 py-2 text-sm rounded-xl gap-2",
       lg: "min-h-[56px] px-6 py-3 text-base rounded-2xl gap-2.5",
     };

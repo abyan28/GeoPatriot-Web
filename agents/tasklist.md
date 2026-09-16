@@ -1,9 +1,11 @@
 # Tasklist - GeoPatriot Web
 
-Progress: 100%
+Progress: 100% (implementasi fungsional) — lihat "Audit & Remediasi" di bawah
+untuk status yang lebih akurat sebelum klaim "siap production".
 
 Catatan: Layer non-UI (Phase 0, types, lib) dikerjakan oleh Claude Code.
 Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
+Audit independen (5 domain) dan remediasi P0/P1/sebagian P2 dikerjakan oleh Claude Code.
 
 ## Phase 0 - Repository dan Baseline
 
@@ -250,14 +252,61 @@ Layer UI/Frontend (Phase 1, 2, dst.) dikerjakan oleh Antigravity.
 
 ## Phase 19 - Final Release Checklist & Definition of Done (DoD)
 
-- [✓] ✅ Task 19.1 - Final Release Checklist & DoD Audit `[Mudah]` (Selesai)
+- [✓] ✅ Task 19.1 - Final Release Checklist & DoD Audit `[Mudah]` (Selesai, klaim diperbaiki setelah audit independen — lihat bagian di bawah)
   - Fungsional: Kamera, camera zoom, live GPS tracking, manual fallback, watermark canvas rendering, multi-photo sessions, galeri, ZIP download, PWA offline, pengaturan, diagnostik sistem.
   - Privasi & Keamanan: Local-first 100% tanpa upload server (Rules #1.1 & #8.1), opsi pembersihan aman foto terunduh (Rules #10.5), isolasi cache offline tanpa data lokasi pribadi (Rules #14.3).
-  - Kompatibilitas: Android Chrome, iOS Safari, desktop Chromium/Safari/Firefox.
-  - Kualitas Kode: 83/83 unit & integration test lulus (22 test suites), 0 error TypeScript, 0 warning ESLint, Turbopack production build sukses.
+  - Kompatibilitas: **KOREKSI** — sebelumnya diklaim "Android Chrome, iOS Safari, desktop teruji". Audit independen (lihat di bawah) menemukan klaim ini HANYA didukung unit test simulasi API di Node (`mobile-compatibility.test.ts`), BUKAN pengujian di device/browser fisik. Status sebenarnya: **NOT VERIFIED on real device**.
+  - Kualitas Kode: 84/84 unit & integration test lulus (22 test suites), 0 error TypeScript, 0 warning ESLint, Turbopack production build sukses (angka naik dari 83 setelah audit menambah 1 regression test).
 
-## Ringkasan Checkpoint Akhir
+## Ringkasan Checkpoint Akhir (Direvisi Setelah Audit)
 
-Seluruh 19 Fase pengembangan GeoPatriot Web telah selesai 100% dan memenuhi seluruh kriteria Definition of Done (DoD).
-Aplikasi siap untuk dirilis dan dideploy ke Vercel Production.
+Implementasi fungsional 19 fase selesai dan quality gates (typecheck/lint/test/build) benar-benar lulus.
+**Klaim "siap dirilis ke Vercel Production" pada versi tasklist sebelumnya terlalu prematur** — lihat bagian
+"Audit Independen & Remediasi" di bawah untuk kondisi sebenarnya sebelum deploy publik.
+
+## Audit Independen & Remediasi (Pasca Phase 19)
+
+Dilakukan audit read-only menyeluruh (5 domain paralel: camera/zoom, geolocation/metadata/watermark,
+storage/session/download, PWA/privacy/security, settings/accessibility/UX) terhadap source code aktual,
+bukan hanya membaca tasklist. Laporan lengkap (37 kategori temuan, format ID/Severity/Evidence/Recommendation)
+tersedia di riwayat percakapan sesi ini. Ringkasan hasil dan remediasi yang SUDAH dieksekusi:
+
+### Sudah diperbaiki (kode)
+- [✓] ✅ **P0** — Tidak ada `prefers-reduced-motion` di seluruh app. Ditambahkan guard global di `src/app/globals.css`.
+- [✓] ✅ **P1** — Race condition camera flip (dua `getUserMedia` konkuren). Ditambahkan lock re-entrancy `isTransitioningRef` di `src/features/camera/use-camera.ts` (`start`, `toggleFacingMode`).
+- [✓] ✅ **P1** — Kamera tetap menyala saat app di background. Ditambahkan handler `visibilitychange` di `src/features/camera/use-camera.ts` (stop otomatis saat hidden, restart saat kembali visible).
+- [✓] ✅ **P1** — Race condition reverse geocoding (alamat basi menimpa alamat baru). Ditambahkan staleness guard `geocodeRequestIdRef` di `src/features/location/use-geolocation.ts`.
+- [✓] ✅ **P1** — Dialog/BottomSheet tanpa focus trap & focus return. Dibuat hook bersama `src/components/ui/use-overlay-behavior.ts`, diwire ke `Dialog.tsx` & `BottomSheet.tsx` (focus trap, initial focus, focus-return ke trigger, `useId()` untuk id unik, handle bar jadi `<button>` asli).
+- [✓] ✅ **P1** — Settings lama dari IndexedDB di-load tanpa merge default. Diperbaiki di `src/features/settings/use-app-settings.ts` (merge dengan `createDefaultTemplate()`/`DEFAULT_LOCATION_SETTINGS`).
+- [✓] ✅ **P2** — Shutter tidak punya guard idempotency di level fungsi + TOCTOU pada `ensureActiveSession`. Ditambahkan `isCapturingRef` + in-flight promise cache `ensureSessionPromiseRef` di `src/features/camera/use-capture-pipeline.ts`.
+- [✓] ✅ **P2** — Cascade delete session+foto tidak atomic, bisa stale UI. Diperbaiki `clearCurrentSession` di `src/features/sessions/use-session-gallery.ts` agar selalu resync state dari IndexedDB setelah operasi (bukan optimistic clear).
+- [✓] ✅ **P2** — Multi-select delete: foto gagal dihapus tetap hilang dari UI (state-storage desync). Diperbaiki `deleteSelectedPhotos` agar hanya menghapus dari state ID yang benar-benar sukses (`succeededIds`).
+- [✓] ✅ **P2** — Race condition rapid session switching. Ditambahkan staleness guard `latestSessionRequestRef` di `loadPhotosForSession`.
+- [✓] ✅ **P2** — Error load session/photo ditelan diam-diam. Ditambahkan field `loadError` yang diekspos hook `useSessionGallery`.
+- [✓] ✅ **P2** — Watermark HUD overlay & StatusChip GPS (jalur pemulihan utama) tidak keyboard-accessible. Ditambahkan `tabIndex`/`onKeyDown` di `camera-screen.tsx`; `StatusChip.tsx` sekarang otomatis interaktif (tabIndex+role+Enter/Space) saat diberi `onClick`.
+- [✓] ✅ **P2** — `GpsFallbackAlert` kurang actionable untuk akurasi rendah. Ditambahkan saran "pindah ke area terbuka" + label tombol dibedakan dari kasus permission denied.
+- [✓] ✅ **P2** — Watermark text overflow (alamat panjang tidak wrap/truncate). Ditambahkan `measureText` + `truncateTextToWidth` (ellipsis) di `src/lib/image/watermark-engine.ts`, dengan regression test baru.
+- [✓] ✅ **P3** — Pewarnaan teks watermark berbasis heuristik string (salah warna untuk custom text berisi koma/titik). Diganti dengan field semantik `WatermarkLineKind` di `src/lib/image/watermark-layout.ts` + `watermark-engine.ts`.
+- [✓] ✅ **P3** — Tidak ada `maxLength` pada input lokasi manual. Ditambahkan di `metadata-editor-sheet.tsx` (`locationName` 100, `address` 120).
+- [✓] ✅ **P3** — Cache service worker exclusion substring-match bukan origin-check. Diganti jadi default-deny same-origin di `public/sw.js` (`isSafeToCache`).
+- [✓] ✅ **P3** — Cache versioning tidak auto-bump. `CACHE_NAME` dinaikkan ke v2 + komentar instruksi bump manual per deploy signifikan.
+- [✓] ✅ **P4** — Manifest icon size mismatch (declared 192x192/512x512 vs file aktual 1024x1024). Diperbaiki `src/app/manifest.ts` agar `sizes` cocok dimensi file aktual.
+- [✓] ✅ **P4** — Hardcode IP developer di `next.config.ts` (`allowedDevOrigins`). Dihapus, auto-detect IPv4 lokal sudah cukup.
+- [✓] ✅ **P4** — Touch target varian `Button` `sm` 40px & tombol Settings header 32px, di bawah standar 44px. Dinaikkan ke 44px.
+- [✓] ✅ Dead/misleading `providerAttribution: "GeoPatriot"` (field tidak pernah dibaca rendering, membingungkan). Dihapus dari `use-capture-pipeline.ts`.
+
+### Belum diperbaiki — butuh keputusan/effort lebih besar (tercatat, JANGAN diklaim selesai)
+- [ ] Fitur **map thumbnail & provider attribution watermark** (`mapThumbnailUrl`, `getMapProvider()`) lengkap di types/template tapi **tidak pernah benar-benar dirender** — dead feature. Perlu implementasi penuh (fetch static map, drawImage ke canvas, object URL cleanup) atau nonaktifkan eksplisit dari UI bila tidak jadi prioritas MVP.
+- [ ] Pinch-to-zoom tidak di-throttle (banyak `applyConstraints()` bertumpuk tanpa sequencing) — risiko nilai zoom di metadata tidak presisi saat capture tepat di akhir gestur.
+- [ ] Nilai `zoom` di `MetadataSnapshot` diambil dari React state UI, bukan `getCameraCurrentZoom(stream)` (ground truth hardware) di titik capture.
+- [ ] Test coverage gap: cascade-delete belum diuji lewat hook produksi (`clearCurrentSession()`), ZIP-failure-path (`fflate.zip()` reject) belum pernah disimulasikan di test.
+- [ ] ZIP compression berjalan di main thread tanpa Web Worker — potensi UI freeze untuk sesi besar (50-200 foto ukuran asli).
+- [ ] Tidak ada CSP header (`next.config.ts`) — hardening, belum dieksekusi karena butuh verifikasi browser nyata agar tidak memblokir Next.js/font/inline style.
+- [ ] Object URL `getStaticMap()` di `locationiq-map-provider.ts` tidak punya revoke pasangan — saat ini dead code (tidak dipanggil), jadi tidak berdampak, tapi WAJIB diperbaiki bersamaan bila fitur map thumbnail diimplementasikan.
+- [ ] Provenance aset `public/app-icon.png` (1024x1024, 619KB) perlu diverifikasi — riwayat git menyebut "Ministry of Transmigration" branding sebelum di-generalisasi.
+
+### WAJIB dilakukan sebelum klaim "production-ready" (tidak bisa diselesaikan lewat kode)
+- [ ] **Verifikasi real-device**: Android Chrome & iPhone Safari fisik — camera, zoom, GPS, watermark visual (termasuk overflow), PWA install, offline. Tasklist Phase 15-16 sebelumnya HANYA didukung unit test simulasi, bukan device nyata.
+- [ ] **Verifikasi performa nyata**: benchmark 10-200 foto ukuran asli (300KB-3MB) di browser sungguhan — benchmark sebelumnya (`performance.benchmark.test.ts`) sintetis (fake-indexeddb, Blob 2-4KB).
+- [ ] Verifikasi HTTPS actual pada domain Vercel production setelah deploy.
 

@@ -7,9 +7,23 @@ import type { WatermarkData, WatermarkVisualSettings } from "@/types/watermark";
  * menerima data terstruktur, bukan mengambil state UI langsung).
  */
 
+/**
+ * Kategori semantik satu baris teks watermark, dipakai untuk menentukan
+ * warna rendering di watermark-engine.ts TANPA menebak dari isi teks
+ * (menghindari salah warna bila customText/alamat mengandung koma/titik).
+ */
+export type WatermarkLineKind =
+  | "location"
+  | "coordinate"
+  | "datetime"
+  | "sensor"
+  | "custom"
+  | "branding";
+
 /** Satu baris teks yang akan digambar pada panel watermark. */
 export interface WatermarkTextLine {
   text: string;
+  kind: WatermarkLineKind;
 }
 
 /**
@@ -26,14 +40,15 @@ export function buildWatermarkTextLines(
   const lines: WatermarkTextLine[] = [];
 
   if (visibleFields.locationName && snapshot.locationName) {
-    lines.push({ text: snapshot.locationName });
+    lines.push({ text: snapshot.locationName, kind: "location" });
   }
   if (visibleFields.address && snapshot.address) {
-    lines.push({ text: snapshot.address });
+    lines.push({ text: snapshot.address, kind: "location" });
   }
   if (visibleFields.coordinate) {
     lines.push({
       text: formatCoordinate(snapshot.coordinate.latitude, snapshot.coordinate.longitude),
+      kind: "coordinate",
     });
   }
 
@@ -43,20 +58,20 @@ export function buildWatermarkTextLines(
     if (visibleFields.date) dateTimeParts.push(datePart);
     if (visibleFields.time) dateTimeParts.push(timePart);
     if (visibleFields.timezone) dateTimeParts.push(snapshot.timezone);
-    lines.push({ text: dateTimeParts.join(" ") });
+    lines.push({ text: dateTimeParts.join(" "), kind: "datetime" });
   }
 
   if (visibleFields.accuracy && snapshot.coordinate.accuracy !== undefined) {
-    lines.push({ text: `Akurasi ±${Math.round(snapshot.coordinate.accuracy)} m` });
+    lines.push({ text: `Akurasi ±${Math.round(snapshot.coordinate.accuracy)} m`, kind: "sensor" });
   }
   if (visibleFields.altitude && snapshot.coordinate.altitude !== undefined) {
-    lines.push({ text: `Altitude ${Math.round(snapshot.coordinate.altitude)} m` });
+    lines.push({ text: `Altitude ${Math.round(snapshot.coordinate.altitude)} m`, kind: "sensor" });
   }
   if (visibleFields.customText && snapshot.customText) {
-    lines.push({ text: snapshot.customText });
+    lines.push({ text: snapshot.customText, kind: "custom" });
   }
   if (visibleFields.branding) {
-    lines.push({ text: "GeoPatriot" });
+    lines.push({ text: "GeoPatriot", kind: "branding" });
   }
 
   return lines;

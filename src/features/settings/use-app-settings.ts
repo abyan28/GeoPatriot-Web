@@ -116,14 +116,25 @@ export function useAppSettings(): UseAppSettingsReturn {
 
     async function loadSettings() {
       try {
+        // Merge dengan default agar field baru pada skema yang belum ada di data
+        // lama (tersimpan dari versi rilis sebelumnya) tetap terisi nilai aman,
+        // bukan undefined (mencegah toggle UI salah tampil "nonaktif").
         const wmRes = await getSetting<WatermarkVisualSettings>(SETTING_KEY_WATERMARK);
         if (isMounted && wmRes.status === "success" && wmRes.data) {
-          setWatermarkSettings(wmRes.data);
+          const defaultWm = createDefaultTemplate();
+          setWatermarkSettings({
+            ...defaultWm,
+            ...wmRes.data,
+            visibleFields: {
+              ...defaultWm.visibleFields,
+              ...(wmRes.data.visibleFields ?? {}),
+            },
+          });
         }
 
         const locRes = await getSetting<LocationAppSettings>(SETTING_KEY_LOCATION);
         if (isMounted && locRes.status === "success" && locRes.data) {
-          setLocationSettings(locRes.data);
+          setLocationSettings({ ...DEFAULT_LOCATION_SETTINGS, ...locRes.data });
         }
 
         if (isMounted) {

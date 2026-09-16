@@ -39,7 +39,7 @@ export function GpsFallbackAlert({
         <p className="text-[10px] text-zinc-300 font-medium truncate">
           {isDenied
             ? "Izin GPS ditolak oleh browser."
-            : `Akurasi sinyal GPS rendah (±${Math.round(gpsAccuracy ?? 0)}m).`}
+            : `Akurasi sinyal GPS rendah (±${Math.round(gpsAccuracy ?? 0)}m). Coba pindah ke area terbuka.`}
         </p>
       </div>
 
@@ -49,7 +49,7 @@ export function GpsFallbackAlert({
         className="shrink-0 px-2 py-0.5 rounded-md bg-[#0e2035] hover:bg-[#1a3c61] border border-[#c5984f]/60 text-[#dcab55] hover:text-white text-[10px] font-semibold transition-all flex items-center gap-1 active:scale-95"
       >
         <EditIcon size={10} />
-        <span>Pilih Manual</span>
+        <span>{isDenied ? "Pilih Manual" : "Gunakan Manual"}</span>
       </button>
     </div>
   );

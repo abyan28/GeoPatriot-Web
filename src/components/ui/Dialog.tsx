@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useId, useRef } from "react";
 import { CloseIcon } from "@/components/icons";
+import { useOverlayBehavior } from "./use-overlay-behavior";
 
 export interface DialogProps {
   isOpen: boolean;
@@ -12,23 +13,13 @@ export interface DialogProps {
 
 /**
  * Modal Dialog accessible untuk konfirmasi aksi penting atau peringatan (Rules #16.3).
+ * Focus trap, auto-focus awal, dan focus-return ke trigger ditangani oleh
+ * useOverlayBehavior agar konsisten dengan BottomSheet.
  */
 export function Dialog({ isOpen, onClose, title, description, children, footer }: DialogProps) {
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-    }
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [isOpen, onClose]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
+  useOverlayBehavior(isOpen, onClose, containerRef);
 
   if (!isOpen) return null;
 
@@ -38,15 +29,17 @@ export function Dialog({ isOpen, onClose, title, description, children, footer }
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
     >
       <div
-        className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl text-white shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-150"
+        ref={containerRef}
+        tabIndex={-1}
+        className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl text-white shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-150 outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
           <div>
-            <h3 id="dialog-title" className="text-lg font-bold text-zinc-100">
+            <h3 id={titleId} className="text-lg font-bold text-zinc-100">
               {title}
             </h3>
             {description && (

@@ -260,7 +260,7 @@ export function CameraScreen() {
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Buka Pengaturan Aplikasi"
             title="Pengaturan Aplikasi"
-            className="w-8 h-8 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f]"
+            className="w-11 h-11 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f]"
           >
             <SettingsIcon size={16} className="text-[#dcab55]" />
           </button>
@@ -303,9 +303,16 @@ export function CameraScreen() {
           <div className="absolute bottom-4 inset-x-3 pointer-events-auto">
             <div
               onClick={() => setIsMetadataSheetOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setIsMetadataSheetOpen(true);
+                }
+              }}
               role="button"
+              tabIndex={0}
               aria-label="Buka pengaturan metadata watermark"
-              className="p-3 rounded-2xl bg-[#08111d]/85 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/40 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99]"
+              className="p-3 rounded-2xl bg-[#08111d]/85 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/40 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
             >
               <div className="flex items-center justify-between border-b border-[#1a3c61]/80 pb-2 mb-2">
                 <div className="flex items-center gap-1.5">

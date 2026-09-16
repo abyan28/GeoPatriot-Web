@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useId, useRef } from "react";
 import { CloseIcon } from "@/components/icons";
+import { useOverlayBehavior } from "./use-overlay-behavior";
 
 export interface BottomSheetProps {
   isOpen: boolean;
@@ -13,6 +14,8 @@ export interface BottomSheetProps {
 /**
  * BottomSheet drawer mobile-first untuk progressive disclosure (Rules #15.4)
  * dengan gaya Deep Navy & Golden Ochre.
+ * Focus trap, auto-focus awal, dan focus-return ke trigger ditangani oleh
+ * useOverlayBehavior agar konsisten dengan Dialog.
  */
 export function BottomSheet({
   isOpen,
@@ -22,22 +25,9 @@ export function BottomSheet({
   children,
   footer,
 }: BottomSheetProps) {
-  // Menutup bottom sheet saat tombol Escape ditekan
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-    }
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [isOpen, onClose]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
+  useOverlayBehavior(isOpen, onClose, containerRef);
 
   if (!isOpen) return null;
 
@@ -47,22 +37,29 @@ export function BottomSheet({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="bottom-sheet-title"
+      aria-labelledby={titleId}
     >
       {/* Kontainer Panel Drawer */}
       <div
-        className="w-full max-w-lg mx-auto bg-[#0e2035] border-t border-[#2f6d8b]/50 rounded-t-3xl text-white shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-200"
+        ref={containerRef}
+        tabIndex={-1}
+        className="w-full max-w-lg mx-auto bg-[#0e2035] border-t border-[#2f6d8b]/50 rounded-t-3xl text-white shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-200 outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Handle Bar Sentuh */}
-        <div className="flex justify-center pt-3 pb-1 cursor-pointer" onClick={onClose}>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Geser untuk menutup panel"
+          className="flex justify-center pt-3 pb-1 w-full"
+        >
           <span className="w-12 h-1.5 rounded-full bg-[#2f6d8b]/60 hover:bg-[#c5984f] transition-colors" />
-        </div>
+        </button>
 
         {/* Header Drawer */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-[#1a3c61]">
           <div>
-            <h2 id="bottom-sheet-title" className="text-lg font-bold text-white tracking-wide">
+            <h2 id={titleId} className="text-lg font-bold text-white tracking-wide">
               {title}
             </h2>
             {description && <p className="text-xs text-[#94a3b8] mt-0.5">{description}</p>}

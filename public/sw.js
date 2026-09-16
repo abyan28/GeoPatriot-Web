@@ -1,20 +1,16 @@
 // GeoPatriot Web Service Worker (Phase 12 / PRD #19 & Rules #14)
-// Versi cache app shell
-const CACHE_NAME = "geopatriot-shell-v1";
+// Versi cache app shell.
+// PENTING: file ini disajikan statis (tidak diproses build Next.js), jadi
+// versi TIDAK auto-bump per deploy. WAJIB naikkan angka versi ini secara
+// manual setiap kali asset app shell berubah signifikan, agar event
+// "activate" benar-benar membersihkan cache lama (audit finding F-01).
+const CACHE_NAME = "geopatriot-shell-v2";
 
 // Asset statis inti yang dicache pada tahap instalasi untuk ketersediaan offline app shell (Rules #14.4)
 const PRECACHE_ASSETS = [
   "/",
   "/manifest.webmanifest",
   "/app-icon.png",
-];
-
-// Daftar domain atau pola URL yang DILARANG DICACHE (Rules #14.3: Perlindungan Privasi Lokasi)
-const NEVER_CACHE_PATTERNS = [
-  "locationiq.com",
-  "nominatim.openstreetmap.org",
-  "/api/geocode",
-  "/api/reverse",
 ];
 
 /**
@@ -59,17 +55,17 @@ self.addEventListener("activate", (event) => {
 });
 
 /**
- * Memeriksa apakah URL request aman untuk dicache atau mengandung data lokasi pribadi.
+ * Memeriksa apakah URL request aman untuk dicache.
  * Sesuai Rules #14.3: Jangan cache response yang berpotensi menyimpan data lokasi pengguna.
+ *
+ * Default-deny berbasis origin (bukan substring-match pada URL) sebagai
+ * satu-satunya aturan: hanya resource SAME-ORIGIN (aset aplikasi sendiri)
+ * yang boleh dicache. LocationIQ dan provider eksternal lain manapun di
+ * masa depan otomatis tidak pernah dicache tanpa perlu didaftarkan manual
+ * (audit finding F-02 — menghindari human-error menambah provider baru).
  */
 function isSafeToCache(url) {
-  const urlString = url.toString().toLowerCase();
-  for (const pattern of NEVER_CACHE_PATTERNS) {
-    if (urlString.includes(pattern)) {
-      return false;
-    }
-  }
-  return true;
+  return url.origin === self.location.origin;
 }
 
 /**

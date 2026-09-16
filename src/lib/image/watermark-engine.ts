@@ -18,6 +18,7 @@ export interface Canvas2DLike {
   drawImage(image: CanvasImageSourceLike, dx: number, dy: number, dw: number, dh: number): void;
   fillRect(x: number, y: number, w: number, h: number): void;
   fillText(text: string, x: number, y: number): void;
+  measureText(text: string): { width: number };
   save(): void;
   restore(): void;
   fillStyle: string;
@@ -122,6 +123,29 @@ export function renderWatermark(options: RenderWatermarkOptions): Promise<Waterm
 }
 
 /**
+ * Memotong teks dengan ellipsis ("...") bila lebih lebar dari maxWidthPx,
+ * menggunakan measureText untuk pengukuran akurat sesuai font yang aktif
+ * (mencegah teks alamat/lokasi panjang overflow keluar panel/foto, rules #6.8).
+ */
+function truncateTextToWidth(ctx: Canvas2DLike, text: string, maxWidthPx: number): string {
+  if (maxWidthPx <= 0 || ctx.measureText(text).width <= maxWidthPx) return text;
+
+  const ellipsis = "...";
+  let low = 0;
+  let high = text.length;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    const candidate = text.slice(0, mid).trimEnd() + ellipsis;
+    if (ctx.measureText(candidate).width <= maxWidthPx) {
+      low = mid;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return low > 0 ? text.slice(0, low).trimEnd() + ellipsis : ellipsis;
+}
+
+/**
  * Menggambar panel watermark Deep Navy & Golden Ochre berisi stempel logo & baris teks di atas foto.
  * Sesuai Rules #6.1: Watermark adalah hasil rendering Canvas nyata pada output Blob.
  */
@@ -186,19 +210,28 @@ function drawWatermarkPanel(
   lines.forEach((line, index) => {
     const textX = panelX + stripeWidth + spacing + contentLeftOffset;
     const textY = panelY + margin + index * lineHeight;
+    // Batasi lebar teks agar tidak overflow keluar panel/tepi foto (rules #6.8).
+    const maxTextWidth = panelX + panelWidth - textX - spacing;
+    const renderedText = truncateTextToWidth(ctx, line.text, maxTextWidth);
 
-    // Pewarnaan teks informatif
-    if (line.text === "GeoPatriot") {
-      ctx.fillStyle = "#dcab55"; // Emas hangat untuk branding
-    } else if (line.text.startsWith("Akurasi") || line.text.startsWith("Altitude")) {
-      ctx.fillStyle = "#94a3b8"; // Abu-abu sejuk untuk sensor
-    } else if (line.text.includes(",") && (line.text.includes(".") || line.text.includes("°"))) {
-      ctx.fillStyle = "#7ec7e8"; // Muted teal untuk koordinat
-    } else {
-      ctx.fillStyle = "#ffffff"; // Putih bersih untuk lokasi & waktu
+    // Pewarnaan teks berdasarkan kategori semantik baris (bukan menebak dari
+    // isi teks), agar custom text/alamat yang mengandung koma/titik tidak
+    // salah terwarnai seperti koordinat (audit finding F5).
+    switch (line.kind) {
+      case "branding":
+        ctx.fillStyle = "#dcab55"; // Emas hangat untuk branding
+        break;
+      case "sensor":
+        ctx.fillStyle = "#94a3b8"; // Abu-abu sejuk untuk sensor
+        break;
+      case "coordinate":
+        ctx.fillStyle = "#7ec7e8"; // Muted teal untuk koordinat
+        break;
+      default:
+        ctx.fillStyle = "#ffffff"; // Putih bersih untuk lokasi, waktu, & custom text
     }
 
-    ctx.fillText(line.text, textX, textY);
+    ctx.fillText(renderedText, textX, textY);
   });
   ctx.restore();
 }

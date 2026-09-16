@@ -45,6 +45,11 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
   const [zoomPresets, setZoomPresets] = useState<number[]>([]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Lock re-entrancy agar start/stop/switch kamera tidak tumpang-tindih saat dipanggil berulang cepat.
+  const isTransitioningRef = useRef(false);
+  // Menandai apakah kamera dimatikan sementara karena tab/app masuk background,
+  // agar bisa dinyalakan ulang otomatis saat kembali ke foreground.
+  const pausedByVisibilityRef = useRef(false);
 
   /**
    * Menyelaraskan kapabilitas dan nilai zoom saat stream kamera berubah (rules #3.8).
@@ -111,33 +116,41 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
    */
   const start = useCallback(
     async (mode?: CameraFacingMode) => {
+      // Cegah start() tumpang-tindih bila sudah ada proses start/switch berjalan (race condition guard).
+      if (isTransitioningRef.current) return;
+
       if (!isCameraSupported()) {
         setStatus("unsupported");
         setErrorMessage("Browser Anda tidak mendukung akses kamera.");
         return;
       }
 
-      const targetMode = mode ?? facingMode;
-      setStatus("requesting");
-      setErrorMessage(null);
+      isTransitioningRef.current = true;
+      try {
+        const targetMode = mode ?? facingMode;
+        setStatus("requesting");
+        setErrorMessage(null);
 
-      // Hentikan stream lama jika sedang berjalan
-      if (stream) {
-        stopCamera(stream);
-        setStream(null);
-      }
+        // Hentikan stream lama jika sedang berjalan
+        if (stream) {
+          stopCamera(stream);
+          setStream(null);
+        }
 
-      const result = await startCamera(targetMode);
-      setStatus(result.status);
+        const result = await startCamera(targetMode);
+        setStatus(result.status);
 
-      if (result.status === "ready" && result.stream) {
-        setStream(result.stream);
-        setFacingMode(targetMode);
-        attachStreamToVideo(result.stream);
-        syncZoomCapabilities(result.stream);
-      } else {
-        syncZoomCapabilities(null);
-        setErrorMessage(result.errorMessage ?? "Gagal mengaktifkan kamera.");
+        if (result.status === "ready" && result.stream) {
+          setStream(result.stream);
+          setFacingMode(targetMode);
+          attachStreamToVideo(result.stream);
+          syncZoomCapabilities(result.stream);
+        } else {
+          syncZoomCapabilities(null);
+          setErrorMessage(result.errorMessage ?? "Gagal mengaktifkan kamera.");
+        }
+      } finally {
+        isTransitioningRef.current = false;
       }
     },
     [facingMode, stream, attachStreamToVideo, syncZoomCapabilities],
@@ -160,6 +173,9 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
    * Berpindah arah kamera (depan <-> belakang).
    */
   const toggleFacingMode = useCallback(async () => {
+    // Cegah dua panggilan switch kamera tumpang-tindih (mis. tap flip dua kali cepat).
+    if (isTransitioningRef.current) return;
+
     const nextMode: CameraFacingMode = facingMode === "environment" ? "user" : "environment";
 
     if (!stream) {
@@ -167,18 +183,23 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
       return;
     }
 
-    setStatus("requesting");
-    const result = await switchCamera(stream, nextMode);
-    setStatus(result.status);
+    isTransitioningRef.current = true;
+    try {
+      setStatus("requesting");
+      const result = await switchCamera(stream, nextMode);
+      setStatus(result.status);
 
-    if (result.status === "ready" && result.stream) {
-      setStream(result.stream);
-      setFacingMode(nextMode);
-      attachStreamToVideo(result.stream);
-      syncZoomCapabilities(result.stream);
-    } else {
-      syncZoomCapabilities(null);
-      setErrorMessage(result.errorMessage ?? "Gagal beralih kamera.");
+      if (result.status === "ready" && result.stream) {
+        setStream(result.stream);
+        setFacingMode(nextMode);
+        attachStreamToVideo(result.stream);
+        syncZoomCapabilities(result.stream);
+      } else {
+        syncZoomCapabilities(null);
+        setErrorMessage(result.errorMessage ?? "Gagal beralih kamera.");
+      }
+    } finally {
+      isTransitioningRef.current = false;
     }
   }, [facingMode, stream, start, attachStreamToVideo, syncZoomCapabilities]);
 
@@ -190,6 +211,27 @@ export function useCamera(initialFacingMode: CameraFacingMode = "environment"): 
       }
     };
   }, [stream]);
+
+  // Hentikan kamera saat tab/app dibawa ke background (privacy & battery),
+  // lalu nyalakan kembali otomatis saat kembali ke foreground (rules #3, workflow Phase 15).
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        if (stream) {
+          pausedByVisibilityRef.current = true;
+          stop();
+        }
+      } else if (pausedByVisibilityRef.current) {
+        pausedByVisibilityRef.current = false;
+        void start(facingMode);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [stream, facingMode, start, stop]);
 
   const isZoomSupported = useMemo(() => Boolean(zoomCapabilities), [zoomCapabilities]);
 

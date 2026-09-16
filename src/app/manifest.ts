@@ -17,15 +17,18 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     categories: ["photography", "utilities", "productivity"],
     icons: [
+      // File public/app-icon.png berdimensi aktual 1024x1024 — sizes di sini
+      // WAJIB cocok dengan dimensi aktual file, bukan ukuran yang diinginkan,
+      // agar Chrome tidak menolak entri icon saat validasi installability PWA.
       {
         src: "/app-icon.png",
-        sizes: "192x192",
+        sizes: "1024x1024",
         type: "image/png",
         purpose: "any",
       },
       {
         src: "/app-icon.png",
-        sizes: "512x512",
+        sizes: "1024x1024",
         type: "image/png",
         purpose: "maskable",
       },

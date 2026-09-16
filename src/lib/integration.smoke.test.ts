@@ -19,6 +19,7 @@ function createFakeCanvas(): CanvasLike {
     drawImage: vi.fn(),
     fillRect: vi.fn(),
     fillText: vi.fn(),
+    measureText: vi.fn().mockReturnValue({ width: 10 }),
     save: vi.fn(),
     restore: vi.fn(),
     fillStyle: "",

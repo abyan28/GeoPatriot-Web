@@ -66,6 +66,10 @@ export function useGeolocation({
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastResolvedKeyRef = useRef<string>("");
+  // Penanda urutan request geocoding untuk mengabaikan response basi yang
+  // resolve setelah request yang lebih baru dikirim (mencegah race condition
+  // di mana alamat lama menimpa alamat baru pada koordinat terkini).
+  const geocodeRequestIdRef = useRef(0);
 
   /**
    * Mengambil alamat reverse geocoding dari koordinat bila berubah secara signifikan.
@@ -78,10 +82,17 @@ export function useGeolocation({
       const cacheKey = `${lat.toFixed(4)},${lon.toFixed(4)}`;
       if (lastResolvedKeyRef.current === cacheKey) return;
 
+      // Tandai request ini sebagai request terbaru; response yang resolve setelah
+      // request yang lebih baru dikirim akan diabaikan (staleness guard).
+      const requestId = ++geocodeRequestIdRef.current;
+
       setIsResolvingAddress(true);
       try {
         const geocoder = getGeocodingProvider();
         const result = await geocoder.reverseGeocode(lat, lon);
+
+        // Abaikan hasil ini bila sudah ada request geocoding lain yang lebih baru.
+        if (requestId !== geocodeRequestIdRef.current) return;
 
         if (result.status === "success") {
           lastResolvedKeyRef.current = cacheKey;
@@ -93,7 +104,9 @@ export function useGeolocation({
       } catch {
         // Fallback aman: geocoding error tidak boleh menggagalkan status lokasi
       } finally {
-        setIsResolvingAddress(false);
+        if (requestId === geocodeRequestIdRef.current) {
+          setIsResolvingAddress(false);
+        }
       }
     },
     [resolveAddress],

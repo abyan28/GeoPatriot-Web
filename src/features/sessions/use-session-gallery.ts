@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { Photo, Session, SessionMode } from "@/types/session";
 import {
   listPhotosBySession,
@@ -24,6 +24,7 @@ export interface UseSessionGalleryReturn {
   isLoading: boolean;
   isDownloadingZip: boolean;
   undownloadedCount: number;
+  loadError: string | null;
   loadSessions: () => Promise<void>;
   selectSession: (sessionId: string) => Promise<void>;
   toggleSelectPhoto: (photoId: string) => void;
@@ -51,6 +52,10 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Menandai request sesi terbaru agar response yang basi (dari rapid session
+  // switching) tidak menimpa state foto milik sesi yang sudah tidak aktif lagi.
+  const latestSessionRequestRef = useRef<string | null>(null);
 
   /**
    * Mengambil daftar seluruh sesi dari IndexedDB.
@@ -61,34 +66,47 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
       const res = await listSessions();
       if (res.status === "success") {
         setSessions(res.data);
+        setLoadError(null);
         if (!activeSessionId && res.data.length > 0) {
           setActiveSessionId(res.data[0].id);
         }
+      } else {
+        setLoadError(res.message);
       }
-    } catch {
-      // Storage error handling
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Gagal memuat daftar sesi.");
     } finally {
       setIsLoading(false);
     }
   }, [activeSessionId]);
 
   /**
-   * Memuat daftar foto untuk sesi tertentu.
+   * Memuat daftar foto untuk sesi tertentu. Mengabaikan hasil bila sudah ada
+   * permintaan sesi lain yang lebih baru (staleness guard, mencegah race
+   * condition saat pengguna berpindah sesi dengan cepat).
    */
   const loadPhotosForSession = useCallback(async (sessionId: string) => {
+    latestSessionRequestRef.current = sessionId;
     setIsLoading(true);
     try {
       const res = await listPhotosBySession(sessionId);
+      if (latestSessionRequestRef.current !== sessionId) return;
       if (res.status === "success") {
         setPhotos(res.data);
+        setLoadError(null);
       } else {
         setPhotos([]);
+        setLoadError(res.message);
       }
       setSelectedPhotoIds(new Set());
-    } catch {
+    } catch (err) {
+      if (latestSessionRequestRef.current !== sessionId) return;
       setPhotos([]);
+      setLoadError(err instanceof Error ? err.message : "Gagal memuat foto sesi.");
     } finally {
-      setIsLoading(false);
+      if (latestSessionRequestRef.current === sessionId) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -107,15 +125,22 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
           setActiveSessionId(targetId);
 
           if (targetId) {
+            latestSessionRequestRef.current = targetId;
             const photoRes = await listPhotosBySession(targetId);
-            if (!isMounted) return;
+            if (!isMounted || latestSessionRequestRef.current !== targetId) return;
             if (photoRes.status === "success") {
               setPhotos(photoRes.data);
+              setLoadError(null);
+            } else {
+              setLoadError(photoRes.message);
             }
           }
+        } else {
+          setLoadError(res.message);
         }
-      } catch {
-        // Silently handle
+      } catch (err) {
+        if (!isMounted) return;
+        setLoadError(err instanceof Error ? err.message : "Gagal memuat data sesi.");
       }
     }
 
@@ -193,26 +218,33 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
   const deleteSelectedPhotos = useCallback(async (): Promise<{ success: boolean; count: number }> => {
     if (selectedPhotoIds.size === 0) return { success: true, count: 0 };
 
-    let deletedCount = 0;
     const idsToDelete = Array.from(selectedPhotoIds);
+    // Hanya foto yang BENAR-BENAR terhapus dari IndexedDB yang boleh dihapus
+    // dari state UI, agar state tidak pernah menyimpang dari storage bila ada
+    // kegagalan parsial (rules #8.4).
+    const succeededIds = new Set<string>();
 
     for (const id of idsToDelete) {
       try {
         const res = await deletePhoto(id);
         if (res.status === "success") {
-          deletedCount++;
+          succeededIds.add(id);
         }
       } catch {
         // Lanjutkan penghapusan foto lain bila salah satu gagal
       }
     }
 
-    setPhotos((prev) => prev.filter((p) => !selectedPhotoIds.has(p.id)));
-    setSelectedPhotoIds(new Set());
+    setPhotos((prev) => prev.filter((p) => !succeededIds.has(p.id)));
+    setSelectedPhotoIds((prev) => {
+      const next = new Set(prev);
+      succeededIds.forEach((id) => next.delete(id));
+      return next;
+    });
 
     return {
-      success: deletedCount > 0,
-      count: deletedCount,
+      success: succeededIds.size === idsToDelete.length,
+      count: succeededIds.size,
     };
   }, [selectedPhotoIds]);
 
@@ -221,30 +253,33 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
    */
   const clearCurrentSession = useCallback(async (): Promise<boolean> => {
     if (!activeSessionId) return false;
+    const sessionIdToClear = activeSessionId;
+    let success = true;
 
     try {
-      await deletePhotosBySession(activeSessionId);
-      await deleteSession(activeSessionId);
-
-      setPhotos([]);
-      setSelectedPhotoIds(new Set());
-
-      // Muat ulang daftar sesi yang tersisa
-      const remainingSessions = await listSessions();
-      if (remainingSessions.status === "success") {
-        setSessions(remainingSessions.data);
-        if (remainingSessions.data.length > 0) {
-          const nextId = remainingSessions.data[0].id;
-          setActiveSessionId(nextId);
-          await loadPhotosForSession(nextId);
-        } else {
-          setActiveSessionId(null);
-        }
-      }
-      return true;
+      await deletePhotosBySession(sessionIdToClear);
+      await deleteSession(sessionIdToClear);
     } catch {
-      return false;
+      success = false;
     }
+
+    // Selalu sinkronkan ulang state dari IndexedDB (baik sukses maupun gagal
+    // sebagian) agar UI tidak pernah menampilkan foto/sesi yang sudah tidak
+    // konsisten dengan storage sesungguhnya (rules #8.4, mencegah stale UI).
+    const remainingSessions = await listSessions();
+    if (remainingSessions.status === "success") {
+      setSessions(remainingSessions.data);
+      const nextId = remainingSessions.data.length > 0 ? remainingSessions.data[0].id : null;
+      setActiveSessionId(nextId);
+      if (nextId) {
+        await loadPhotosForSession(nextId);
+      } else {
+        setPhotos([]);
+        setSelectedPhotoIds(new Set());
+      }
+    }
+
+    return success;
   }, [activeSessionId, loadPhotosForSession]);
 
   /**
@@ -330,6 +365,9 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
 
       await createSession(sessionData);
 
+      // Invalidasi request loadPhotosForSession sesi sebelumnya yang mungkin
+      // masih berjalan, agar responsnya tidak menimpa state sesi baru ini.
+      latestSessionRequestRef.current = newSessionId;
       setSessions((prev) => [sessionData, ...prev]);
       setActiveSessionId(newSessionId);
       setPhotos([]);
@@ -358,6 +396,7 @@ export function useSessionGallery(initialSessionId?: string | null): UseSessionG
     isLoading,
     isDownloadingZip,
     undownloadedCount,
+    loadError,
     loadSessions,
     selectSession,
     toggleSelectPhoto,

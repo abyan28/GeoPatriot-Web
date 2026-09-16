@@ -38,11 +38,32 @@ export function StatusChip({
   icon,
   tone = "zinc",
   className = "",
+  onClick,
+  onKeyDown,
+  tabIndex,
+  role,
   ...props
 }: StatusChipProps) {
+  // Chip yang diberi onClick harus tetap bisa diaktifkan via keyboard (rules #16.1):
+  // default tabIndex={0} + role="button" + Enter/Space trigger onClick, kecuali
+  // pemanggil sudah menentukan sendiri.
+  const isInteractive = Boolean(onClick);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    onKeyDown?.(event);
+    if (isInteractive && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      onClick?.(event as unknown as React.MouseEvent<HTMLDivElement>);
+    }
+  };
+
   return (
     <div
       className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-md transition-colors ${TONE_CLASSES[tone]} ${className}`}
+      onClick={onClick}
+      onKeyDown={isInteractive ? handleKeyDown : onKeyDown}
+      tabIndex={tabIndex ?? (isInteractive ? 0 : undefined)}
+      role={role ?? (isInteractive ? "button" : undefined)}
       {...props}
     >
       <span className={`w-2 h-2 rounded-full shrink-0 ${DOT_CLASSES[tone]}`} aria-hidden="true" />

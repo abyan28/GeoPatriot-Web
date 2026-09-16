@@ -18,6 +18,7 @@ function createFakeContext(): Canvas2DLike {
     drawImage: vi.fn(),
     fillRect: vi.fn(),
     fillText: vi.fn(),
+    measureText: vi.fn().mockReturnValue({ width: 10 }),
     save: vi.fn(),
     restore: vi.fn(),
     fillStyle: "",
@@ -138,5 +139,44 @@ describe("renderWatermark", () => {
       expect.any(Number),
       expect.any(Number),
     );
+  });
+
+  it("memotong teks dengan ellipsis bila melebihi lebar panel (audit finding F2)", async () => {
+    const ctx = createFakeContext();
+    // measureText mengembalikan lebar proporsional panjang teks agar truncation benar-benar teruji.
+    (ctx.measureText as ReturnType<typeof vi.fn>).mockImplementation((text: string) => ({
+      width: text.length * 20,
+    }));
+    const canvas: CanvasLike = {
+      width: 0,
+      height: 0,
+      getContext: () => ctx,
+      toBlob: (callback) => callback(new Blob(["fake-jpeg"], { type: "image/jpeg" })),
+    };
+
+    const longAddressData: WatermarkData = {
+      snapshot: {
+        ...SAMPLE_DATA.snapshot,
+        address:
+          "Jalan Sangat Panjang Sekali Nomor 123, Kelurahan Contoh, Kecamatan Contoh, Kabupaten Contoh, Provinsi Contoh",
+      },
+    };
+
+    await renderWatermark({
+      sourceImage: {},
+      sourceWidth: 1080,
+      sourceHeight: 1920,
+      data: longAddressData,
+      settings: createDefaultTemplate(),
+      canvasFactory: () => canvas,
+    });
+
+    const renderedTexts = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map(
+      (call) => call[0] as string,
+    );
+    const addressLine = renderedTexts.find((text) => text.startsWith("Jalan Sangat Panjang"));
+    expect(addressLine).toBeDefined();
+    expect(addressLine!.endsWith("...")).toBe(true);
+    expect(addressLine!.length).toBeLessThan(longAddressData.snapshot.address!.length);
   });
 });

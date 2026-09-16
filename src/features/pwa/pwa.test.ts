@@ -30,12 +30,13 @@ describe("PWA Specification & Safety Tests (Phase 12)", () => {
 
     const swContent = fs.readFileSync(swPath, "utf-8");
 
-    // Verifikasi cache name app shell
-    expect(swContent).toContain("geopatriot-shell-v1");
+    // Verifikasi cache name app shell bertipe versioned string (bukan angka statis tertentu)
+    expect(swContent).toMatch(/CACHE_NAME\s*=\s*"geopatriot-shell-v\d+"/);
 
-    // Verifikasi perlindungan privasi lokasi pengguna (Rules #14.3)
-    expect(swContent).toContain("locationiq.com");
+    // Verifikasi perlindungan privasi lokasi pengguna (Rules #14.3): default-deny
+    // berbasis origin, bukan substring-match domain tertentu (audit finding F-02).
     expect(swContent).toContain("isSafeToCache");
+    expect(swContent).toContain("url.origin === self.location.origin");
 
     // Verifikasi precache app shell
     expect(swContent).toContain("PRECACHE_ASSETS");
