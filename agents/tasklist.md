@@ -535,3 +535,63 @@ sehingga konten yang overflow benar-benar tidak terjangkau.
 `waitForVideoFrame`, readyState guard, dan fallback resolvedAddressInfo). Typecheck/lint/build
 bersih. Belum di-commit — menunggu instruksi user.
 
+## Sesi Lanjutan: Modal Foto Tidak Bisa Scroll, Simplifikasi Form Manual, HUD Watermark Tertutup Shutter
+
+### 1. [✓] ✅ Modal "Hasil Foto Dokumentasi" tidak bisa di-scroll (portrait maupun landscape)
+Root cause: `src/components/ui/Dialog.tsx` — panel modal tidak punya `max-h`/`overflow`
+SAMA SEKALI (lebih parah dari bug `BottomSheet` sebelumnya yang setidaknya punya
+`max-h-[85vh]` walau scroll internalnya rusak). Konten panjang (gambar + blok metadata)
+bisa terpotong keluar viewport tanpa cara apa pun untuk menjangkaunya.
+* Diubah: `src/components/ui/Dialog.tsx` — panel sekarang `flex flex-col max-h-[85vh]
+  overflow-hidden`, header & footer tetap diam (`shrink-0`), HANYA blok `children` yang
+  `overflow-y-auto flex-1 min-h-0` (pola sama seperti fix `BottomSheet` sebelumnya).
+  Berlaku ke SEMUA pemakai `Dialog` (foto preview, konfirmasi hapus, dsb), tidak hanya
+  modal foto.
+* **NOT VERIFIED tanpa device nyata**: coba buka detail foto lalu scroll di portrait &
+  landscape untuk konfirmasi.
+
+### 2. [✓] ✅ Input manual "Nama Lokasi" & "Alamat Lengkap" dihapus — sepenuhnya otomatis dari LocationIQ
+Sesuai permintaan user: karena alamat sudah di-resolve otomatis dari LocationIQ untuk
+koordinat manual (sesi sebelumnya), field teks manual untuk nama lokasi/alamat jadi
+redundan dan membingungkan (dua sumber kebenaran).
+* Diubah: `src/features/metadata/metadata-editor-sheet.tsx` — 2 input dihapus, diganti
+  panel read-only yang menampilkan hasil resolve LocationIQ langsung (dengan status
+  "Mencari alamat..." saat belum ada hasil). Bagian preview watermark di bawah sheet juga
+  disatukan memakai `gpsAddressInfo` (kini berlaku untuk GPS ATAU manual) alih-alih
+  bercabang ke `draftManualLoc.locationName/address` yang sudah tidak ada UI-nya.
+  `handleCopyFromGps` disederhanakan — hanya menyalin koordinat, alamat otomatis
+  ter-resolve ulang oleh `resolveForCoordinate` di parent.
+* Diubah: `src/features/metadata/use-metadata-config.ts` — `DEFAULT_MANUAL_LOCATION.
+  locationName`/`.address` diubah dari teks placeholder statis ("Lokasi Dokumentasi",
+  "Indonesia") jadi string kosong. **PENTING**: ini bukan kosmetik — kalau default-nya
+  tidak kosong, fallback `manualLocation.locationName || resolvedAddressInfo?.locationName`
+  akan SELALU menang ke default statis dan hasil resolve LocationIQ tidak akan pernah
+  benar-benar terpakai di watermark (bug laten yang baru ketahuan saat menghapus UI-nya).
+* Tidak mengubah `ManualLocationInput` type — field `locationName`/`address` tetap ada
+  (diisi otomatis via fallback, bukan dihapus dari data model).
+
+### 3. [✓] ✅ HUD watermark live tidak lagi ketutupan tombol shutter — diperkecil & posisi dinamis
+Sesuai keputusan user (bukan dihapus, tapi diperkecil+dipindah — live preview watermark
+tetap ada sesuai PRD): root cause overlap adalah HUD (`absolute bottom-4`) dan footer
+kontrol kamera (`absolute bottom-0`) sama-sama positioned independen tanpa saling tahu
+ukuran satu sama lain — di device dengan baris preset zoom aktif atau safe-area-inset-bottom
+besar, footer jadi lebih tinggi dari asumsi dan menutupi HUD.
+* Diubah: `src/features/camera/camera-screen.tsx`:
+  - Tinggi footer diukur LIVE via `ResizeObserver` (`footerRef`/`footerHeight` state),
+    bukan angka statis — otomatis benar walau baris preset zoom tampil/tidak atau
+    safe-area berbeda antar device.
+  - HUD sekarang `style={{ bottom: footerHeight + 12 }}` (posisi selalu tepat di atas
+    footer, dengan transisi halus saat footer berubah tinggi).
+  - Konten HUD dipangkas dari 5 baris (brand+badge, nama lokasi, alamat, koordinat+akurasi,
+    waktu+timezone, catatan) jadi 2 baris (nama lokasi + tombol "Ubah"; koordinat + waktu)
+    — detail lengkap tetap bisa dilihat dengan mengetuk HUD untuk buka sheet metadata.
+  - Variabel `activeAddress` (sudah tidak dipakai di JSX) dan import `getLocalTimezone`
+    (sudah tidak dipakai) dibersihkan.
+* **NOT VERIFIED tanpa device nyata**: perlu dicoba di HP asli, terutama saat preset zoom
+  tampil (kondisi yang paling mungkin membuat footer lebih tinggi dari perkiraan).
+
+**Kualitas kode**: 122/122 test lulus (tidak ada test baru untuk sesi ini — seluruhnya
+perubahan UI murni tanpa logic baru yang perlu diuji unit; behavior fallback
+`resolvedAddressInfo` sudah tercakup test sesi sebelumnya). Typecheck/lint/build bersih.
+Belum di-commit — menunggu instruksi user.
+

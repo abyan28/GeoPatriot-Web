@@ -31,13 +31,17 @@ export function Dialog({ isOpen, onClose, title, description, children, footer }
       aria-modal="true"
       aria-labelledby={titleId}
     >
+      {/* max-h + flex column dengan HANYA blok konten yang overflow-y-auto (min-h-0
+          wajib, lihat catatan sama di BottomSheet.tsx) — header & footer tetap
+          diam di tempat, konten panjang (mis. foto + metadata) bisa di-scroll
+          alih-alih terpotong tanpa cara menjangkaunya (baik portrait/landscape). */}
       <div
         ref={containerRef}
         tabIndex={-1}
-        className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl text-white shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-150 outline-none"
+        className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl text-white shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150 outline-none overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between p-5 pb-4">
           <div>
             <h3 id={titleId} className="text-lg font-bold text-zinc-100">
               {title}
@@ -50,16 +54,20 @@ export function Dialog({ isOpen, onClose, title, description, children, footer }
             type="button"
             onClick={onClose}
             aria-label="Tutup dialog"
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors shrink-0"
           >
             <CloseIcon size={16} />
           </button>
         </div>
 
-        {children && <div className="text-sm text-zinc-300">{children}</div>}
+        {children && (
+          <div className="text-sm text-zinc-300 overflow-y-auto flex-1 min-h-0 px-5 pb-4 overscroll-contain">
+            {children}
+          </div>
+        )}
 
         {footer && (
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+          <div className="flex items-center justify-end gap-2 p-5 pt-4 border-t border-zinc-800 shrink-0">
             {footer}
           </div>
         )}

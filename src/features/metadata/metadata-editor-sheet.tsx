@@ -90,18 +90,16 @@ function MetadataEditorContent({
   };
 
   /**
-   * Mengisi form manual menggunakan pembacaan GPS saat ini.
+   * Mengisi koordinat manual menggunakan pembacaan GPS saat ini. Nama lokasi/
+   * alamat TIDAK di-set di sini — begitu koordinat berubah, parent
+   * (camera-screen.tsx) otomatis memicu reverse geocoding untuk koordinat
+   * baru ini (resolveForCoordinate), hasilnya muncul lewat prop gpsAddressInfo.
    */
   const handleCopyFromGps = () => {
     if (gpsCoordinate) {
       const latitude = Number(gpsCoordinate.latitude.toFixed(6));
       const longitude = Number(gpsCoordinate.longitude.toFixed(6));
-      setDraftManualLoc({
-        latitude,
-        longitude,
-        locationName: gpsAddressInfo?.locationName || "Titik Koordinat Lapangan",
-        address: gpsAddressInfo?.address || "",
-      });
+      setDraftManualLoc((prev) => ({ ...prev, latitude, longitude }));
       setCoordinateText(formatCoordinatePair(latitude, longitude));
       setCoordinateError(null);
       setDraftLocationMode("manual");
@@ -268,42 +266,26 @@ function MetadataEditorContent({
                 )}
               </div>
 
-              <div>
-                <label className="block text-[10px] text-zinc-400 mb-1">
-                  Nama Lokasi / Objek Lapangan
-                </label>
-                <input
-                  type="text"
-                  value={draftManualLoc.locationName}
-                  onChange={(e) =>
-                    setDraftManualLoc((prev) => ({
-                      ...prev,
-                      locationName: e.target.value,
-                    }))
-                  }
-                  maxLength={100}
-                  className="w-full min-h-[40px] px-2.5 py-1.5 rounded-lg bg-[#0e2035] border border-[#2f6d8b]/40 text-white text-xs focus:border-[#c5984f] focus:outline-none"
-                  placeholder="Mis. Posko Pengamatan Blok B"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-zinc-400 mb-1">
-                  Alamat Lengkap / Keterangan Wilayah
-                </label>
-                <input
-                  type="text"
-                  value={draftManualLoc.address ?? ""}
-                  onChange={(e) =>
-                    setDraftManualLoc((prev) => ({
-                      ...prev,
-                      address: e.target.value,
-                    }))
-                  }
-                  maxLength={120}
-                  className="w-full min-h-[40px] px-2.5 py-1.5 rounded-lg bg-[#0e2035] border border-[#2f6d8b]/40 text-white text-xs focus:border-[#c5984f] focus:outline-none"
-                  placeholder="Mis. Desa Sukamaju, Kec. Sepaku"
-                />
+              {/* Nama lokasi & alamat TIDAK diisi manual — otomatis dicari lewat
+                  reverse geocoding LocationIQ begitu koordinat di atas valid. */}
+              <div className="p-2.5 rounded-lg bg-[#0e2035] border border-[#2f6d8b]/30">
+                <p className="text-[10px] text-zinc-400 mb-1">
+                  Nama lokasi & alamat (otomatis dari LocationIQ):
+                </p>
+                {gpsAddressInfo?.locationName || gpsAddressInfo?.address ? (
+                  <>
+                    <p className="text-xs font-semibold text-white">
+                      {gpsAddressInfo.locationName}
+                    </p>
+                    {gpsAddressInfo.address && (
+                      <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5">
+                        {gpsAddressInfo.address}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-[11px] text-zinc-500 italic">Mencari alamat...</p>
+                )}
               </div>
             </div>
           )}
@@ -389,14 +371,11 @@ function MetadataEditorContent({
           </p>
           <div className="space-y-1 font-mono text-[11px] text-zinc-300">
             <p className="font-sans font-bold text-white">
-              {draftLocationMode === "manual"
-                ? draftManualLoc.locationName || "Lokasi Manual"
-                : gpsAddressInfo?.locationName || "Titik GPS Terdeteksi"}
+              {gpsAddressInfo?.locationName ||
+                (draftLocationMode === "manual" ? "Lokasi Manual" : "Titik GPS Terdeteksi")}
             </p>
             <p className="text-zinc-400 text-[10px] line-clamp-1">
-              {draftLocationMode === "manual"
-                ? draftManualLoc.address || "Alamat tidak diisi"
-                : gpsAddressInfo?.address || "Mencari alamat..."}
+              {gpsAddressInfo?.address || "Mencari alamat..."}
             </p>
             <p className="text-[#7ec7e8]">
               {draftLocationMode === "manual"

@@ -44,12 +44,18 @@ export interface UseMetadataConfigReturn extends MetadataConfigState {
 
 /**
  * Nilai default lokasi manual jika GPS tidak tersedia.
+ * locationName/address SENGAJA kosong (bukan placeholder statis) — field ini
+ * tidak lagi diisi manual oleh user di UI, melainkan diisi otomatis lewat
+ * reverse geocoding LocationIQ untuk koordinat manual (resolvedAddressInfo).
+ * Kalau default di sini tidak kosong, fallback `manualLocation.locationName ||
+ * resolvedAddressInfo?.locationName` di buildMetadataSnapshot akan SELALU
+ * menang duluan dan hasil resolve otomatis tidak akan pernah terpakai.
  */
 const DEFAULT_MANUAL_LOCATION: ManualLocationInput = {
   latitude: -6.2088,
   longitude: 106.8456,
-  locationName: "Lokasi Dokumentasi",
-  address: "Indonesia",
+  locationName: "",
+  address: "",
 };
 
 /**

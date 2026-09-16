@@ -10,7 +10,7 @@ import { CameraControls } from "./camera-controls";
 import { useCapturePipeline } from "./use-capture-pipeline";
 import { SessionGalleryDrawer } from "@/features/sessions";
 import { useGeolocation } from "@/features/location";
-import { useMetadataConfig, MetadataEditorSheet, getLocalTimezone } from "@/features/metadata";
+import { useMetadataConfig, MetadataEditorSheet } from "@/features/metadata";
 import { useAppSettings, SettingsSheet } from "@/features/settings";
 import {
   useSystemDiagnostics,
@@ -124,6 +124,25 @@ export function CameraScreen() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const { isFullscreen, isSupported: isFullscreenSupported, toggleFullscreen } =
     useFullscreen(rootRef);
+  // Tinggi footer kontrol kamera diukur secara live (bukan angka statis) agar
+  // HUD watermark di atasnya selalu punya jarak aman terlepas dari apakah
+  // baris preset zoom sedang tampil atau safe-area-inset-bottom device
+  // berbeda-beda — mencegah HUD ketutupan tombol shutter/kontrol (audit finding).
+  const footerRef = useRef<HTMLElement | null>(null);
+  const [footerHeight, setFooterHeight] = useState<number>(0);
+
+  useEffect(() => {
+    const node = footerRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setFooterHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [cameraStatus]);
+
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
@@ -213,10 +232,6 @@ export function CameraScreen() {
         // koordinat manual (bukan posisi GPS) — dipakai sebagai fallback bila
         // user belum mengisi nama lokasi/alamat sendiri.
         manualLocation.locationName || geoAddress?.locationName || "Lokasi Manual";
-  const activeAddress =
-    locationMode === "gps"
-      ? geoAddress?.address
-      : manualLocation.address || geoAddress?.address;
   const activeTimeDisplay = timeMode === "auto" ? liveClock : manualDateTime.replace("T", " ");
 
   return (
@@ -378,8 +393,15 @@ export function CameraScreen() {
           zoomCapabilities={zoomCapabilities}
           onZoomChange={setZoom}
         >
-          {/* Watermark Live HUD Overlay (Interaktif & Real-time) */}
-          <div className="absolute bottom-4 inset-x-3 pointer-events-auto">
+          {/* Watermark Live HUD Overlay (Interaktif, ringkas 2 baris) — posisi
+              bottom dihitung dari tinggi footer terukur (footerHeight) + jarak
+              aman, bukan angka statis, supaya tidak pernah ketutupan tombol
+              shutter/kontrol kamera walau footer berubah tinggi (baris preset
+              zoom tampil/tidak, safe-area-inset-bottom berbeda antar device). */}
+          <div
+            className="absolute inset-x-3 pointer-events-auto transition-[bottom] duration-150"
+            style={{ bottom: footerHeight + 12 }}
+          >
             <div
               onClick={() => setIsMetadataSheetOpen(true)}
               onKeyDown={(event) => {
@@ -391,58 +413,26 @@ export function CameraScreen() {
               role="button"
               tabIndex={0}
               aria-label="Buka pengaturan metadata watermark"
-              className="p-3 rounded-2xl bg-[#08111d]/85 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/40 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
+              className="px-3 py-2 rounded-xl bg-[#08111d]/85 hover:bg-[#0e2035]/95 backdrop-blur-md border border-[#2f6d8b]/40 text-white shadow-2xl transition-all cursor-pointer group active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5984f]"
             >
-              <div className="flex items-center justify-between border-b border-[#1a3c61]/80 pb-2 mb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#c5984f] shadow-[0_0_8px_rgba(197,152,79,0.8)]" />
-                  <span className="text-xs font-bold text-white tracking-wide">GeoPatriot Web</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0e2035] border border-[#2f6d8b]/30 text-[#7ec7e8] font-medium">
-                    {locationMode === "gps" ? "GPS Live" : "Manual"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1 text-[10px] text-[#dcab55] font-semibold group-hover:underline">
-                  <SlidersIcon size={12} />
-                  <span>Ubah</span>
-                </div>
-              </div>
-
-              {/* Detail Lokasi & Koordinat */}
-              <div className="space-y-0.5 font-mono text-[11px] text-zinc-300">
-                <p className="font-sans font-semibold text-white text-xs line-clamp-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-sans font-semibold text-white truncate">
                   {activeLocationName}
-                </p>
-                {activeAddress && (
-                  <p className="text-[10px] text-zinc-400 font-sans line-clamp-1">
-                    {activeAddress}
-                  </p>
-                )}
-                <div className="flex items-center gap-2 text-[10px] text-[#7ec7e8] pt-0.5">
-                  <span className="flex items-center gap-1">
-                    <MapPinIcon size={12} className="text-[#c5984f]" />
-                    {activeLatitude.toFixed(6)}, {activeLongitude.toFixed(6)}
-                  </span>
-                  {locationMode === "gps" && geoCoord?.accuracy !== undefined && (
-                    <span className="text-zinc-400">±{Math.round(geoCoord.accuracy)}m</span>
-                  )}
-                </div>
-
-                {/* Waktu & Timezone */}
-                <div className="flex items-center gap-2 text-[10px] text-zinc-400 pt-0.5">
-                  <span className="flex items-center gap-1">
-                    <ClockIcon size={12} className="text-[#dcab55]" />
-                    {activeTimeDisplay}
-                  </span>
-                  <span className="text-[#2f6d8b] font-medium">{getLocalTimezone()}</span>
-                </div>
-
-                {/* Catatan Lapangan Opsional */}
-                {customNote.trim() && (
-                  <p className="text-[10px] text-[#eac47a] font-sans italic pt-1 line-clamp-1">
-                    &ldquo;{customNote.trim()}&rdquo;
-                  </p>
-                )}
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-[#dcab55] font-semibold shrink-0 group-hover:underline">
+                  <SlidersIcon size={11} />
+                  <span>Ubah</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-0.5 font-mono text-[10px] text-[#7ec7e8]">
+                <span className="flex items-center gap-1 truncate">
+                  <MapPinIcon size={11} className="text-[#c5984f] shrink-0" />
+                  {activeLatitude.toFixed(5)}, {activeLongitude.toFixed(5)}
+                </span>
+                <span className="flex items-center gap-1 text-zinc-400 shrink-0">
+                  <ClockIcon size={11} className="text-[#dcab55]" />
+                  {activeTimeDisplay}
+                </span>
               </div>
             </div>
           </div>
@@ -451,7 +441,7 @@ export function CameraScreen() {
 
       {/* Bottom Controls (Thumb Zone) */}
       {cameraStatus === "ready" && (
-        <footer className="absolute bottom-0 inset-x-0 z-30 pointer-events-auto">
+        <footer ref={footerRef} className="absolute bottom-0 inset-x-0 z-30 pointer-events-auto">
           <CameraControls
             onCapture={handleCapture}
             onToggleFacingMode={toggleFacingMode}
