@@ -10,6 +10,7 @@ export interface StatusChipProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?: React.ReactNode;
   tone?: StatusTone;
   active?: boolean;
+  compact?: boolean;
 }
 
 const TONE_CLASSES: Record<StatusTone, string> = {
@@ -38,6 +39,7 @@ export function StatusChip({
   icon,
   tone = "zinc",
   active = false,
+  compact = false,
   className = "",
   onClick,
   onKeyDown,
@@ -60,7 +62,11 @@ export function StatusChip({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-md transition-colors ${TONE_CLASSES[tone]} ${active ? "animate-pulse" : ""} ${className}`}
+      className={`inline-flex items-center ${
+        compact ? "gap-1.5 px-2 py-0.5 text-[11px]" : "gap-2 px-2.5 py-1 text-xs"
+      } rounded-full font-medium border backdrop-blur-md transition-colors ${TONE_CLASSES[tone]} ${
+        active ? "animate-pulse" : ""
+      } ${className}`}
       onClick={onClick}
       onKeyDown={isInteractive ? handleKeyDown : onKeyDown}
       tabIndex={tabIndex ?? (isInteractive ? 0 : undefined)}
@@ -79,6 +85,7 @@ export interface GpsQualityChipProps extends React.HTMLAttributes<HTMLDivElement
   quality?: GpsQuality;
   accuracy?: number;
   isManual?: boolean;
+  compact?: boolean;
 }
 
 /**
@@ -88,16 +95,18 @@ export function GpsQualityChip({
   quality,
   accuracy,
   isManual = false,
+  compact = false,
   className = "",
   ...props
 }: GpsQualityChipProps) {
   if (isManual) {
     return (
       <StatusChip
-        label="Lokasi Manual"
-        subLabel="Tetap"
-        icon={<MapPinIcon size={14} />}
+        label={compact ? "Manual" : "Lokasi Manual"}
+        subLabel={compact ? undefined : "Tetap"}
+        icon={<MapPinIcon size={compact ? 12 : 14} />}
         tone="sky"
+        compact={compact}
         className={className}
         {...props}
       />
@@ -107,9 +116,10 @@ export function GpsQualityChip({
   if (!quality) {
     return (
       <StatusChip
-        label="Mencari GPS..."
-        icon={<MapPinIcon size={14} className="animate-pulse" />}
+        label={compact ? "Mencari..." : "Mencari GPS..."}
+        icon={<MapPinIcon size={compact ? 12 : 14} className="animate-pulse" />}
         tone="zinc"
+        compact={compact}
         className={className}
         {...props}
       />
@@ -118,52 +128,43 @@ export function GpsQualityChip({
 
   const accuracyText = typeof accuracy === "number" ? `±${Math.round(accuracy)}m` : undefined;
 
-  switch (quality) {
-    case "excellent":
-      return (
-        <StatusChip
-          label="GPS Sangat Baik"
-          subLabel={accuracyText}
-          icon={<MapPinIcon size={14} />}
-          tone="emerald"
-          className={className}
-          {...props}
-        />
-      );
-    case "good":
-      return (
-        <StatusChip
-          label="GPS Baik"
-          subLabel={accuracyText}
-          icon={<MapPinIcon size={14} />}
-          tone="sky"
-          className={className}
-          {...props}
-        />
-      );
-    case "fair":
-      return (
-        <StatusChip
-          label="GPS Cukup"
-          subLabel={accuracyText}
-          icon={<MapPinIcon size={14} />}
-          tone="amber"
-          className={className}
-          {...props}
-        />
-      );
-    case "poor":
-      return (
-        <StatusChip
-          label="GPS Kurang"
-          subLabel={accuracyText}
-          icon={<MapPinIcon size={14} />}
-          tone="rose"
-          className={className}
-          {...props}
-        />
-      );
+  const toneMap: Record<GpsQuality, StatusTone> = {
+    excellent: "emerald",
+    good: "sky",
+    fair: "amber",
+    poor: "rose",
+  };
+
+  const labelMap: Record<GpsQuality, string> = {
+    excellent: "GPS Sangat Baik",
+    good: "GPS Baik",
+    fair: "GPS Cukup",
+    poor: "GPS Kurang",
+  };
+
+  if (compact) {
+    return (
+      <StatusChip
+        label={accuracyText ?? labelMap[quality]}
+        icon={<MapPinIcon size={12} />}
+        tone={toneMap[quality]}
+        compact
+        className={`font-mono tabular-nums ${className}`}
+        {...props}
+      />
+    );
   }
+
+  return (
+    <StatusChip
+      label={labelMap[quality]}
+      subLabel={accuracyText}
+      icon={<MapPinIcon size={14} />}
+      tone={toneMap[quality]}
+      className={className}
+      {...props}
+    />
+  );
 }
 
 export interface TimeModeChipProps extends React.HTMLAttributes<HTMLDivElement> {

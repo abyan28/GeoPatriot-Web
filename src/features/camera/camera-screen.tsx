@@ -330,91 +330,109 @@ export function CameraScreen() {
         </button>
 
         {/* GPS / Manual Status Chip & Tombol Pengaturan Cepat */}
-        <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {locationMode === "manual" ? (
-            <StatusChip
-              label="Mode Manual"
-              tone="amber"
-              icon={<EditIcon size={12} />}
-              onClick={() => setIsMetadataSheetOpen(true)}
-              role="button"
-              aria-label="Mode lokasi manual. Ketuk untuk ubah koordinat."
-              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
-            />
-          ) : geoStatus === "ready" && geoCoord ? (
-            <GpsQualityChip
-              quality={geoQuality ?? "good"}
-              accuracy={geoCoord.accuracy}
-              onClick={() => setIsMetadataSheetOpen(true)}
-              role="button"
-              aria-label="Status kualitas GPS. Ketuk untuk pengaturan metadata."
-              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
-            />
-          ) : geoStatus === "searching" ? (
-            <StatusChip
-              label="Mencari GPS..."
-              tone="sky"
-              active
-              onClick={() => setIsMetadataSheetOpen(true)}
-              role="button"
-              aria-label="Sedang mencari sinyal GPS. Ketuk untuk opsi manual."
-              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
-            />
-          ) : geoStatus === "denied" ? (
-            <StatusChip
-              label="GPS Ditolak"
-              tone="rose"
-              onClick={() => setIsMetadataSheetOpen(true)}
-              role="button"
-              aria-label="Izin GPS ditolak. Ketuk untuk beralih ke input manual."
-              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
-            />
-          ) : (
-            <StatusChip
-              label="GPS Offline"
-              tone="zinc"
-              onClick={() => setIsMetadataSheetOpen(true)}
-              role="button"
-              aria-label="GPS tidak tersedia. Ketuk untuk input manual."
-              className="cursor-pointer active:scale-95 transition-transform text-[11px] py-1 px-2"
-            />
-          )}
+        <div className="pointer-events-auto flex items-center justify-end gap-1.5 sm:gap-2 ml-auto shrink-0 min-w-0">
+          {/* Compact GPS / Location Chip:
+              Posisi menempel tepat di sebelah kiri tombol Fullscreen.
+              Bila angka/status memanjang, ia hanya melebar ke arah kiri. */}
+          <div className="shrink-0 flex items-center">
+            {locationMode === "manual" ? (
+              <StatusChip
+                compact
+                label="Manual"
+                tone="amber"
+                icon={<EditIcon size={11} />}
+                onClick={() => setIsMetadataSheetOpen(true)}
+                role="button"
+                aria-label="Mode lokasi manual. Ketuk untuk ubah koordinat."
+                title="Mode lokasi manual. Ketuk untuk ubah koordinat."
+                className="cursor-pointer active:scale-95 transition-all text-[11px] py-1 px-2 font-mono tabular-nums"
+              />
+            ) : geoStatus === "ready" && geoCoord ? (
+              <GpsQualityChip
+                compact
+                quality={geoQuality ?? "good"}
+                accuracy={geoCoord.accuracy}
+                onClick={() => setIsMetadataSheetOpen(true)}
+                role="button"
+                aria-label={`GPS ${geoQuality}: Akurasi ±${Math.round(geoCoord.accuracy ?? 0)}m`}
+                title={`GPS ${geoQuality}: Akurasi ±${Math.round(geoCoord.accuracy ?? 0)}m. Ketuk untuk pengaturan metadata.`}
+                className="cursor-pointer active:scale-95 transition-all text-[11px] py-1 px-2 font-mono tabular-nums"
+              />
+            ) : geoStatus === "searching" ? (
+              <StatusChip
+                compact
+                label="Mencari..."
+                tone="sky"
+                active
+                onClick={() => setIsMetadataSheetOpen(true)}
+                role="button"
+                aria-label="Sedang mencari sinyal GPS. Ketuk untuk opsi manual."
+                title="Sedang mencari sinyal GPS. Ketuk untuk opsi manual."
+                className="cursor-pointer active:scale-95 transition-all text-[11px] py-1 px-2"
+              />
+            ) : geoStatus === "denied" ? (
+              <StatusChip
+                compact
+                label="Ditolak"
+                tone="rose"
+                onClick={() => setIsMetadataSheetOpen(true)}
+                role="button"
+                aria-label="Izin GPS ditolak. Ketuk untuk beralih ke input manual."
+                title="Izin GPS ditolak. Ketuk untuk beralih ke input manual."
+                className="cursor-pointer active:scale-95 transition-all text-[11px] py-1 px-2"
+              />
+            ) : (
+              <StatusChip
+                compact
+                label="Offline"
+                tone="zinc"
+                onClick={() => setIsMetadataSheetOpen(true)}
+                role="button"
+                aria-label="GPS tidak tersedia. Ketuk untuk input manual."
+                title="GPS tidak tersedia. Ketuk untuk input manual."
+                className="cursor-pointer active:scale-95 transition-all text-[11px] py-1 px-2"
+              />
+            )}
+          </div>
 
-          {isFullscreenSupported && (
+          {/* Action Buttons Group: Terkunci di sisi paling kanan */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {isFullscreenSupported && (
+              <button
+                type="button"
+                onClick={handleToggleFullscreen}
+                aria-label={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
+                title={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
+              >
+                {isFullscreen ? (
+                  <MinimizeIcon size={15} className="text-[#dcab55]" />
+                ) : (
+                  <MaximizeIcon size={15} className="text-[#dcab55]" />
+                )}
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={handleToggleFullscreen}
-              aria-label={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
-              title={isFullscreen ? "Keluar layar penuh" : "Masuk layar penuh"}
+              onClick={() => setIsUploadOpen(true)}
+              aria-label="Upload foto untuk diberi watermark"
+              title="Upload foto & watermark"
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
             >
-              {isFullscreen ? (
-                <MinimizeIcon size={15} className="text-[#dcab55]" />
-              ) : (
-                <MaximizeIcon size={15} className="text-[#dcab55]" />
-              )}
+              <UploadIcon size={15} className="text-[#dcab55]" />
             </button>
-          )}
 
-          <button
-            type="button"
-            onClick={() => setIsUploadOpen(true)}
-            aria-label="Upload foto untuk diberi watermark"
-            title="Upload foto & watermark"
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
-          >
-            <UploadIcon size={15} className="text-[#dcab55]" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            aria-label="Buka Pengaturan Aplikasi"
-            title="Pengaturan Aplikasi"
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
-          >
-            <SettingsIcon size={15} className="text-[#dcab55]" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              aria-label="Buka Pengaturan Aplikasi"
+              title="Pengaturan Aplikasi"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
+            >
+              <SettingsIcon size={15} className="text-[#dcab55]" />
+            </button>
+          </div>
         </div>
       </header>
 
