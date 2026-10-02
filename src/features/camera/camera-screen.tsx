@@ -12,6 +12,7 @@ import { SessionGalleryDrawer } from "@/features/sessions";
 import { useGeolocation } from "@/features/location";
 import { useMetadataConfig, MetadataEditorSheet } from "@/features/metadata";
 import { useAppSettings, SettingsSheet } from "@/features/settings";
+import { usePhotoUpload, PhotoUploadSheet } from "@/features/upload";
 import {
   useSystemDiagnostics,
   DiagnosticsModal,
@@ -29,6 +30,7 @@ import {
   MinimizeIcon,
   ArrowUpDownIcon,
   CrosshairIcon,
+  UploadIcon,
 } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 
@@ -102,6 +104,7 @@ export function CameraScreen() {
     sessionPhotoCount,
     currentSessionId,
     reloadSessionPhotos,
+    ensureActiveSession,
   } = useCapturePipeline({
     videoRef,
     isCameraReady: cameraStatus === "ready",
@@ -120,6 +123,7 @@ export function CameraScreen() {
   });
 
   const { showToast } = useToast();
+  const photoUpload = usePhotoUpload({ watermarkSettings, ensureActiveSession });
   // Root element target Fullscreen API — BERBEDA dari PWA standalone
   // (src/features/pwa/use-pwa.ts): ini murni Web Fullscreen API yang dipicu
   // tombol di dalam app, berlaku juga saat dibuka di tab browser biasa.
@@ -180,6 +184,7 @@ export function CameraScreen() {
   const [isMetadataSheetOpen, setIsMetadataSheetOpen] = useState<boolean>(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
   const [liveClock, setLiveClock] = useState<string>("");
 
@@ -390,6 +395,16 @@ export function CameraScreen() {
               )}
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsUploadOpen(true)}
+            aria-label="Upload foto untuk diberi watermark"
+            title="Upload foto & watermark"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#08111d]/90 hover:bg-[#0e2035] border border-[#2f6d8b]/50 text-zinc-300 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-95 focus:outline-none focus:ring-1 focus:ring-[#c5984f] shrink-0"
+          >
+            <UploadIcon size={15} className="text-[#dcab55]" />
+          </button>
 
           <button
             type="button"
@@ -710,6 +725,16 @@ export function CameraScreen() {
         onReset={() => {
           resetToDefaults();
           showToast("Pengaturan dikembalikan ke default", "info");
+        }}
+      />
+
+      {/* Drawer Upload Foto + Watermark (offline-first: foto diambil dulu, watermark menyusul) */}
+      <PhotoUploadSheet
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        upload={photoUpload}
+        onProcessed={() => {
+          void reloadSessionPhotos();
         }}
       />
 

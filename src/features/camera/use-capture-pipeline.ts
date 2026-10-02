@@ -38,6 +38,8 @@ export interface UseCapturePipelineReturn {
   currentSessionId: string | null;
   createNewSession: () => Promise<string>;
   reloadSessionPhotos: () => Promise<void>;
+  /** Mengembalikan id session aktif, membuat session baru bila belum ada. */
+  ensureActiveSession: () => Promise<string>;
 }
 
 /**
@@ -351,5 +353,6 @@ export function useCapturePipeline({
     currentSessionId,
     createNewSession,
     reloadSessionPhotos,
+    ensureActiveSession,
   };
 }
