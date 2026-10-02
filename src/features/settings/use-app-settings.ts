@@ -20,6 +20,24 @@ export const DEFAULT_LOCATION_SETTINGS: LocationAppSettings = {
   autoFallbackToManual: true,
 };
 
+/**
+ * Menggabungkan pengaturan watermark tersimpan dengan default. Field baru terisi nilai
+ * default, dan key visibleFields yang tidak dikenal (mis. "gpsQuality" sisa bug lama)
+ * dibuang agar tidak menumpuk di penyimpanan.
+ */
+export function mergeSavedWatermarkSettings(
+  saved: Partial<WatermarkVisualSettings>,
+): WatermarkVisualSettings {
+  const defaults = createDefaultTemplate();
+  const knownKeys = Object.keys(defaults.visibleFields) as (keyof typeof defaults.visibleFields)[];
+  const savedFields = saved.visibleFields ?? ({} as Partial<typeof defaults.visibleFields>);
+  const visibleFields = { ...defaults.visibleFields };
+  for (const key of knownKeys) {
+    if (typeof savedFields[key] === "boolean") visibleFields[key] = savedFields[key];
+  }
+  return { ...defaults, ...saved, visibleFields };
+}
+
 export interface StorageInfo {
   usageBytes: number;
   quotaBytes: number;
@@ -121,15 +139,7 @@ export function useAppSettings(): UseAppSettingsReturn {
         // bukan undefined (mencegah toggle UI salah tampil "nonaktif").
         const wmRes = await getSetting<WatermarkVisualSettings>(SETTING_KEY_WATERMARK);
         if (isMounted && wmRes.status === "success" && wmRes.data) {
-          const defaultWm = createDefaultTemplate();
-          setWatermarkSettings({
-            ...defaultWm,
-            ...wmRes.data,
-            visibleFields: {
-              ...defaultWm.visibleFields,
-              ...(wmRes.data.visibleFields ?? {}),
-            },
-          });
+          setWatermarkSettings(mergeSavedWatermarkSettings(wmRes.data));
         }
 
         const locRes = await getSetting<LocationAppSettings>(SETTING_KEY_LOCATION);

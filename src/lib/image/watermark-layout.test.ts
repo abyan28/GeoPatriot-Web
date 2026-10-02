@@ -67,3 +67,28 @@ describe("clampOutputDimensions", () => {
     expect(result.height).toBe(2048);
   });
 });
+
+describe("splitCapturedAt", () => {
+  it("menampilkan waktu sesuai zona waktu snapshot, bukan UTC", async () => {
+    const { splitCapturedAt } = await import("./watermark-layout");
+    expect(splitCapturedAt("2026-09-16T01:31:12.000Z", "Asia/Jakarta")).toEqual({
+      datePart: "2026-09-16",
+      timePart: "08:31:12",
+    });
+  });
+
+  it("ikut berganti tanggal bila lewat tengah malam di zona tersebut", async () => {
+    const { splitCapturedAt } = await import("./watermark-layout");
+    expect(splitCapturedAt("2026-09-16T20:00:00.000Z", "Asia/Jakarta")).toEqual({
+      datePart: "2026-09-17",
+      timePart: "03:00:00",
+    });
+  });
+
+  it("jatuh ke UTC bila zona waktu tidak diberikan atau tidak valid", async () => {
+    const { splitCapturedAt } = await import("./watermark-layout");
+    const utc = { datePart: "2026-09-16", timePart: "01:31:12" };
+    expect(splitCapturedAt("2026-09-16T01:31:12.000Z")).toEqual(utc);
+    expect(splitCapturedAt("2026-09-16T01:31:12.000Z", "Bukan/Zona")).toEqual(utc);
+  });
+});

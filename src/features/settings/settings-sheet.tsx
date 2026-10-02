@@ -16,6 +16,7 @@ import {
   RefreshCwIcon,
 } from "@/components/icons";
 import { useAppSettings, type UseAppSettingsReturn } from "./use-app-settings";
+import { WATERMARK_FIELD_TOGGLES } from "./watermark-field-toggles";
 import type {
   WatermarkFieldVisibility,
   WatermarkPosition,
@@ -346,26 +347,13 @@ export function SettingsSheet({
                   Visibilitas Informasi Watermark
                 </label>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  {[
-                    { key: "locationName", label: "Nama Lokasi" },
-                    { key: "address", label: "Alamat Lengkap" },
-                    { key: "coordinate", label: "Koordinat GPS" },
-                    { key: "date", label: "Tanggal" },
-                    { key: "time", label: "Jam & Menit" },
-                    { key: "timezone", label: "Zona Waktu" },
-                    { key: "gpsQuality", label: "Akurasi GPS" },
-                    { key: "branding", label: "Logo & Branding" },
-                  ].map((field) => {
-                    const isChecked = Boolean(
-                      watermarkSettings.visibleFields[field.key as keyof WatermarkFieldVisibility],
-                    );
+                  {WATERMARK_FIELD_TOGGLES.map((field) => {
+                    const isChecked = Boolean(watermarkSettings.visibleFields[field.key]);
                     return (
                       <button
                         key={field.key}
                         type="button"
-                        onClick={() =>
-                          void handleToggleField(field.key as keyof WatermarkFieldVisibility)
-                        }
+                        onClick={() => void handleToggleField(field.key)}
                         className="flex items-center gap-2 p-2 rounded-xl bg-[#08111d] border border-[#1a3c61] text-left hover:border-[#2f6d8b]/50 transition-colors"
                       >
                         {isChecked ? (

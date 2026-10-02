@@ -54,7 +54,10 @@ export function buildWatermarkTextLines(
 
   const dateTimeParts: string[] = [];
   if (visibleFields.date || visibleFields.time) {
-    const { datePart, timePart } = splitCapturedAt(snapshot.capturedAt);
+    const { datePart, timePart } = splitCapturedAt(
+      snapshot.capturedAt,
+      snapshot.timezone,
+    );
     if (visibleFields.date) dateTimeParts.push(datePart);
     if (visibleFields.time) dateTimeParts.push(timePart);
     if (visibleFields.timezone) dateTimeParts.push(snapshot.timezone);
@@ -82,12 +85,41 @@ export function formatCoordinate(latitude: number, longitude: number): string {
   return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 }
 
-/** Memecah string ISO 8601 capturedAt menjadi bagian tanggal dan waktu yang mudah dibaca. */
-export function splitCapturedAt(capturedAtIso: string): { datePart: string; timePart: string } {
+/**
+ * Memecah string ISO 8601 capturedAt menjadi tanggal (YYYY-MM-DD) dan waktu (HH:mm:ss)
+ * dalam zona waktu IANA yang diberikan, agar jam di watermark cocok dengan label zona
+ * waktunya. Tanpa timeZone (atau timeZone tidak valid) jatuh ke UTC.
+ */
+export function splitCapturedAt(
+  capturedAtIso: string,
+  timeZone?: string,
+): { datePart: string; timePart: string } {
   const date = new Date(capturedAtIso);
-  const datePart = date.toISOString().slice(0, 10);
-  const timePart = date.toISOString().slice(11, 19);
-  return { datePart, timePart };
+  if (timeZone) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).formatToParts(date);
+      const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+      return {
+        datePart: `${get("year")}-${get("month")}-${get("day")}`,
+        timePart: `${get("hour")}:${get("minute")}:${get("second")}`,
+      };
+    } catch {
+      // timeZone tidak valid: pakai UTC di bawah.
+    }
+  }
+  return {
+    datePart: date.toISOString().slice(0, 10),
+    timePart: date.toISOString().slice(11, 19),
+  };
 }
 
 /** Dimensi maksimum sisi terpanjang output foto, untuk mencegah memori berlebihan (rules #7.6). */

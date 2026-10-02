@@ -10,7 +10,7 @@ import { CameraControls, ZoomControlsPill } from "./camera-controls";
 import { useCapturePipeline } from "./use-capture-pipeline";
 import { SessionGalleryDrawer } from "@/features/sessions";
 import { useGeolocation } from "@/features/location";
-import { useMetadataConfig, MetadataEditorSheet } from "@/features/metadata";
+import { useMetadataConfig, MetadataEditorSheet, getLocalTimezone } from "@/features/metadata";
 import { useAppSettings, SettingsSheet } from "@/features/settings";
 import { usePhotoUpload, PhotoUploadSheet } from "@/features/upload";
 import {
@@ -281,6 +281,19 @@ export function CameraScreen() {
         // user belum mengisi nama lokasi/alamat sendiri.
         manualLocation.locationName || geoAddress?.locationName || "Lokasi Manual";
   const activeTimeDisplay = timeMode === "auto" ? liveClock : manualDateTime.replace("T", " ");
+  // Tanggal/jam/zona waktu di HUD mengikuti toggle yang sama dengan watermark pada foto.
+  const hudVisible = watermarkSettings.visibleFields;
+  const [hudDatePart = "", hudTimePart = ""] = activeTimeDisplay.split(" ");
+  const hudDateTimeText = [
+    hudVisible.date ? hudDatePart : "",
+    hudVisible.time ? hudTimePart : "",
+    hudVisible.timezone ? getLocalTimezone() : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  // Akurasi & altitude hanya ada di snapshot mode GPS (mode manual tidak membawanya).
+  const hudAccuracy = locationMode === "gps" ? geoCoord?.accuracy : undefined;
+  const hudAltitude = locationMode === "gps" ? geoCoord?.altitude : undefined;
 
   return (
     <div
@@ -612,7 +625,7 @@ export function CameraScreen() {
                     {/* Baris 1: Judul / Nama Lokasi */}
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-sans font-bold text-white truncate">
-                        {activeLocationName}
+                        {hudVisible.locationName ? activeLocationName : "Info Lokasi"}
                       </span>
                       <span className="text-[9px] text-[#dcab55] font-semibold shrink-0 group-hover:underline flex items-center gap-0.5">
                         <SlidersIcon size={10} />
@@ -638,17 +651,17 @@ export function CameraScreen() {
                     )}
 
                     {/* Baris 4: Tanggal & Jam */}
-                    {(watermarkSettings.visibleFields.date || watermarkSettings.visibleFields.time) && (
+                    {(hudVisible.date || hudVisible.time) && (
                       <div className="flex items-center gap-1 text-[9px] text-zinc-400 truncate">
                         <ClockIcon size={10} className="text-[#dcab55] shrink-0" />
-                        <span>{activeTimeDisplay}</span>
+                        <span>{hudDateTimeText}</span>
                       </div>
                     )}
 
                     {/* Baris 5: Akurasi GPS */}
-                    {watermarkSettings.visibleFields.accuracy && geoCoord?.accuracy !== undefined && (
+                    {hudVisible.accuracy && hudAccuracy !== undefined && (
                       <div className="text-[8px] text-[#94a3b8] truncate">
-                        Akurasi ±{Math.round(geoCoord.accuracy)} m
+                        Akurasi ±{Math.round(hudAccuracy)} m
                         {geoQuality
                           ? ` (${
                               geoQuality === "excellent"
@@ -661,6 +674,18 @@ export function CameraScreen() {
                             })`
                           : ""}
                       </div>
+                    )}
+
+                    {/* Baris 6: Altitude */}
+                    {hudVisible.altitude && hudAltitude != null && (
+                      <div className="text-[8px] text-[#94a3b8] truncate">
+                        Altitude {Math.round(hudAltitude)} m
+                      </div>
+                    )}
+
+                    {/* Baris 7: Catatan Lapangan */}
+                    {hudVisible.customText && customNote.trim() && (
+                      <div className="text-[9px] text-[#eac47a] truncate">{customNote.trim()}</div>
                     )}
                   </div>
                 </div>
